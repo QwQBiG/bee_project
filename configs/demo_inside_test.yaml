@@ -1,0 +1,35 @@
+tracker:
+  model_path: "artifacts/models/honey_bee_detector_yolov8s.pt"
+  conf_threshold: 0.15
+  iou_threshold: 0.45
+  device: "cuda:0"
+  use_enhancement: true
+  max_age: 30
+  min_hits: 2
+
+behavior:
+  min_tracklet_length: 5
+  intensity_window: 30
+  density_grid: [10, 10]
+  frame_size: [1170, 884]
+  behavior:
+    entering_threshold: 0.8
+    foraging_threshold: 2.0
+    resting_threshold: 0.5
+    wandering_threshold: 3.0
+
+visualization:
+  show_tracks: true
+  show_labels: true
+  show_confidence: true
+  track_line_width: 2
+  bbox_line_width: 2
+  font_scale: 0.5
+  colormap: "hsv"
+
+inference:
+  save_video: true
+  save_tracks: true
+  save_behavior: true
+  output_fps: 10
+  visualization: true

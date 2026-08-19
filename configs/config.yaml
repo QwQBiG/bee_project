@@ -1,0 +1,107 @@
+# 智慧养蜂蜜蜂识别项目配置
+
+## 模型配置
+model:
+  # 巢外可见光检测模型
+  outside_detector:
+    model_type: "yolov8"
+    model_size: "m"  # n, s, m, l, x
+    checkpoint: "yolov8m.pt"
+    input_size: 640
+    conf_threshold: 0.25
+    iou_threshold: 0.45
+    device: "cuda:0"
+
+  # 巢内红外检测模型
+  inside_detector:
+    model_type: "yolov8"
+    model_size: "m"
+    checkpoint: "yolov8m.pt"
+    input_size: 640
+    conf_threshold: 0.2
+    iou_threshold: 0.45
+    device: "cuda:0"
+
+  # 跟踪器配置
+  tracker:
+    type: "deep_sort"  # deep_sort, bytetrack
+    max_age: 30        # 最大丢失帧数
+    min_confidence: 0.3
+    nms_max_overlap: 0.7
+    max_iou_distance: 0.7
+    max_feature_distance: 0.2
+    nn_budget: 100
+
+## 数据配置
+data:
+  # 巢外数据
+  outside:
+    video_path: "data/outside_hive"
+    annotation_path: "datasets/outside_annotations"
+    train_split: 0.7
+    val_split: 0.15
+    test_split: 0.15
+
+  # 巢内数据
+  inside:
+    video_path: "data/inside_hive"
+    annotation_path: "datasets/inside_annotations"
+    train_split: 0.7
+    val_split: 0.15
+    test_split: 0.15
+
+## 训练配置
+training:
+  outside_model:
+    epochs: 100
+    batch_size: 16
+    learning_rate: 0.001
+    weight_decay: 0.0005
+    optimizer: "AdamW"
+    scheduler: "cosine"
+    augmentation: true
+    early_stopping_patience: 10
+
+  inside_model:
+    epochs: 100
+    batch_size: 16
+    learning_rate: 0.001
+    weight_decay: 0.0005
+    optimizer: "AdamW"
+    scheduler: "cosine"
+    augmentation: true
+    early_stopping_patience: 10
+
+## 行为量化配置
+behavior:
+  # 个体行为指标
+  individual:
+    velocity_threshold: 50        # 像素/帧
+    direction_bins: 8             # 方向量化 bins
+    staying_threshold: 100       # 停留帧数阈值
+    activity_intensity_window: 30  # 活动强度窗口
+
+  # 群体行为指标
+  group:
+    density_grid_size: 100        # 密度网格大小
+    aggregation_threshold: 10     # 聚集检测阈值
+    activity_calm_threshold: 0.3  # 活跃/安静阈值
+
+## 可视化配置
+visualization:
+  show_tracks: true
+  show_labels: true
+  show_confidence: true
+  track_line_width: 2
+  bbox_line_width: 2
+  font_scale: 0.5
+  colormap: "hsv"  # hsv, rainbow, jet
+
+## 推理配置
+inference:
+  batch_size: 1
+  save_video: true
+  save_tracks: true
+  save_behavior: true
+  output_fps: 30
+  visualization: true

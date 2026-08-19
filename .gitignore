@@ -1,0 +1,48 @@
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtualenv
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 模型权重文件（过大，不建议提交）
+*.pt
+*.pth
+*.onnx
+*.bin
+
+# 输出结果
+output/
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+
+# Ultralytics 缓存
+.ultralytics/
+
+# 视频数据（过大，不提交）
+data/**/*.mp4
+data/**/*.avi
+data/**/*.mov
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# 日志
+*.log
+logs/

@@ -1,0 +1,52 @@
+# 智慧养蜂蜜蜂识别项目依赖
+
+# PyTorch (>= 2.0.0)
+torch>=2.0.0
+torchvision>=0.15.0
+
+# 深度学习目标检测
+ultralytics>=8.0.0  # YOLOv8
+
+# OpenCV
+opencv-python>=4.8.0
+opencv-python-headless>=4.8.0
+
+# 数值计算
+numpy>=1.24.0
+scipy>=1.10.0
+
+# 数据处理
+pandas>=2.0.0
+pillow>=10.0.0
+
+# 配置文件
+pyyaml>=6.0
+
+# 机器学习
+scikit-learn>=1.3.0
+
+# 可视化
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# 日志
+tqdm>=4.65.0
+
+# 跟踪算法依赖
+# deep-sort-realtime (可选)
+# sort (可选)
+
+# 模型相关
+onnx>=1.14.0
+onnxruntime>=1.16.0  # CPU推理加速
+
+# 评估指标
+# pycocotools (用于COCO格式评估)
+pycocotools>=2.0.0
+
+# Jupyter支持 (可选)
+jupyter>=1.0.0
+ipython>=8.0.0
+
+# 调试工具
+pytest>=7.0.0

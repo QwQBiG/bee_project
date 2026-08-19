@@ -1,0 +1,32 @@
+tracker:
+  model_path: "artifacts/models/hive_entrance_bee_yolov8n.pt"
+  conf_threshold: 0.10
+  iou_threshold: 0.45
+  device: "cuda:0"
+  imgsz: 1280
+  tracker_type: "deepsort"
+  max_age: 10
+  min_confidence: 0.10
+
+behavior:
+  min_tracklet_length: 5
+  intensity_window: 30
+  density_grid: [10, 10]
+  frame_size: [720, 1080]
+
+visualization:
+  show_tracks: true
+  show_detections: true
+  show_labels: true
+  show_confidence: true
+  track_line_width: 2
+  bbox_line_width: 2
+  font_scale: 0.5
+  colormap: "hsv"
+
+inference:
+  save_video: true
+  save_tracks: true
+  save_behavior: true
+  output_fps: 60
+  visualization: true
