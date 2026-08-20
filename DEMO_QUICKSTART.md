@@ -142,3 +142,83 @@ Get-FileHash -Algorithm SHA256 -LiteralPath ".\artifacts\models\honey_bee_detect
 “Demo 跑通”表示工程链路能够执行，不代表已经达到最终比赛精度。正式参赛前仍需在统一标注数据上报告检测指标、跟踪指标、行为量化指标、运行速度和失败案例，并继续处理遮挡、密集蜂群、红外域差异及身份切换问题。
 
 模型权重可后续放入 GitHub Release、Git LFS 或团队共享盘；生成结果和大视频不应直接提交到普通 Git 历史。参见 [GitHub 大文件说明](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)。
+
+## 六、现场演示最简流程
+
+本节用于现场展示，不需要背诵全部参数。建议提前打开 PowerShell，把下面的整段命令按顺序执行。
+
+### 1. 进入项目并确认环境
+
+```powershell
+Set-Location -LiteralPath "D:\bee_project\bee_project"
+$py = "C:\Users\111\AppData\Local\Programs\Python\Python313\python.exe"
+$env:YOLO_CONFIG_DIR = "D:\bee_project\bee_project\.ultralytics"
+& $py test_project.py
+```
+
+看到最后的成功提示后，说明代码、配置和主要接口检查通过。这个脚本只做自检，不会处理视频。
+
+### 2. 现场只实时运行巢外 Demo
+
+巢外片段只有 2 秒，适合现场等待；复制下面整段命令即可：
+
+```powershell
+& $py main.py `
+  --mode outside `
+  --video "data\external\vnbee\vnbee_outside_test_2s.mp4" `
+  --output "output\presentation_outside" `
+  --config "configs\demo_outside_test.yaml" `
+  --device cuda:0
+```
+
+出现“处理完成”后，打开结果视频：
+
+```powershell
+Invoke-Item ".\output\presentation_outside\outside_result.mp4"
+```
+
+再打开统计图：
+
+```powershell
+Invoke-Item ".\output\presentation_outside\analysis\counts_over_time.png"
+```
+
+现场只需说明三点：
+
+1. 青色框是检测器找到的蜜蜂。
+2. 彩色框和 `ID` 是连续帧匹配后形成的临时轨迹。
+3. 右侧或 JSON 中的统计用于说明程序输出，不等同于正式精度指标。
+
+### 3. 巢内结果采用“播放已有结果 + 说明”
+
+巢内完整视频处理时间较长，现场不建议重新等待。直接播放已经完成的结果：
+
+```powershell
+Invoke-Item ".\output\demo_test\inside_result.mp4"
+```
+
+同时可以打开：
+
+```powershell
+Invoke-Item ".\output\demo_test\analysis\track_count_over_time.png"
+Invoke-Item ".\output\demo_test\analysis\behavior_distribution.png"
+```
+
+解释为：巢内红外流程已经完成检测、跟踪和行为统计，但高密度遮挡导致当前跟踪结果和行为标签仍属于 Demo 级输出，不能宣称已经达到比赛精度。
+
+### 4. 现场开场和收尾说法
+
+开场：
+
+> 今天展示的是一个可运行的端到端 Demo。输入一段巢内红外或巢外视频，系统会依次完成蜜蜂检测、轨迹关联、行为字段生成、结果视频保存和数据分析。
+
+收尾：
+
+> 本次演示证明的是工程链路已经接通，并且可以输出可视化和结构化结果。检测、跟踪和行为统计的正式准确率，还需要带标注真值的数据集进行后续评估。
+
+### 5. 现场出现问题时的备用方案
+
+- **模型或视频找不到**：不要临时下载，直接播放 `output/demo_test/inside_result.mp4` 和 `output/demo_outside_test/outside_result.mp4`。
+- **GPU 不可用**：不现场改环境，直接说明已有结果是在 GPU 环境完成的；需要测试时把 `cuda:0` 改成 `cpu`。
+- **运行时间过长**：跳过巢内重新运行，只展示已有巢内结果；巢外仍可现场运行。
+- **有人问准确率**：明确说明本次 Demo 没有把官方逐帧真值接入评测，因此不报告 mAP、MOTA 或 IDF1。
