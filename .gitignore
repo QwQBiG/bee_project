@@ -46,3 +46,8 @@ Thumbs.db
 # 日志
 *.log
 logs/
+
+# OIST 第三方标注原始包（本地评测使用，不重新分发）
+data/external/oist/annotations/*.tgz
+data/external/oist/annotations/frame_annotations_30fps/
+data/external/oist/annotations/frame_annotations_70fps/
