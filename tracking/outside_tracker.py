@@ -23,6 +23,22 @@ except ImportError:
     HAS_YOLO = False
 
 
+def _check_lap_available() -> bool:
+    """检测 lap 包是否可用（ultralytics 内置 ByteTrack/BoT-SORT 的依赖）。
+
+    lap 在某些平台（如 macOS ARM / Apple Silicon）上无法通过 pip 安装，
+    此时应自动降级为项目自带的 motion_iou 跟踪器。
+    """
+    try:
+        import lap  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+HAS_LAP = _check_lap_available()
+
+
 @dataclass
 class TrackState:
     """跟踪状态"""
@@ -364,6 +380,16 @@ class OutsideHiveTracker:
         # 优先使用 Ultralytics 官方多目标跟踪器。
         tracker_type = str(config.get('tracker_type', 'bytetrack')).lower()
         self.uses_official_tracker = tracker_type in {'botsort', 'bytetrack'}
+
+        # 跨平台兼容：lap 包在 macOS ARM 上不可用时自动降级为 motion_iou。
+        if self.uses_official_tracker and not HAS_LAP:
+            print(
+                f'[兼容] lap 包不可用，无法使用 ultralytics 内置 {tracker_type}；'
+                f'自动降级为 motion_iou（功能等效，跨平台兼容）。'
+            )
+            self.uses_official_tracker = False
+            tracker_type = 'motion_iou'
+
         if self.uses_official_tracker:
             tracker_config = config.get('tracker_config') or f'{tracker_type}.yaml'
             self.tracker = UltralyticsMOTTracker(
@@ -506,7 +532,11 @@ class OutsideHiveTracker:
 
 
 def create_outside_tracker(config: Dict = None) -> OutsideHiveTracker:
-    """创建巢外跟踪器"""
+    """创建巢外跟踪器。
+
+    默认使用 ByteTrack（ultralytics 内置），若 lap 包不可用则自动降级为
+    motion_iou，确保跨平台（Windows/Linux/macOS）开箱即用。
+    """
     if config is None:
         config = {
             'model_path': 'yolov8m.pt',
