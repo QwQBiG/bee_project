@@ -72,8 +72,8 @@ def parse_args():
     # 其他选项
     parser.add_argument('--show', action='store_true',
                        help='显示结果视频')
-    parser.add_argument('--device', type=str, default='cuda:0',
-                       help='运行设备')
+    parser.add_argument('--device', type=str, default=None,
+                       help='运行设备（默认自动检测：CUDA > MPS > CPU）')
     
     return parser.parse_args()
 

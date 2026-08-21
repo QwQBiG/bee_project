@@ -6,6 +6,7 @@ from pathlib import Path
 
 import cv2
 from ultralytics import YOLO
+from utils.common import get_device
 
 
 def parse_args():
@@ -17,7 +18,7 @@ def parse_args():
     parser.add_argument(
         "--thresholds", type=float, nargs="+", default=[0.05, 0.10, 0.20]
     )
-    parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--device", default=get_device())
     return parser.parse_args()
 
 

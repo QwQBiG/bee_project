@@ -87,19 +87,32 @@ class InfraredImageEnhancer:
         return result
     
     def denoise(self, image: np.ndarray) -> np.ndarray:
-        """降噪处理"""
-        # 使用非局部均值去噪
-        if len(image.shape) == 3:
-            denoised = cv2.fastNlMeansDenoisingColored(image, None,
+        """降噪处理（先缩放到小尺寸降噪，再恢复原尺寸以提升速度）"""
+        h, w = image.shape[:2]
+        max_side = 480
+        
+        if max(h, w) > max_side:
+            scale = max_side / max(h, w)
+            small = cv2.resize(image, (int(w * scale), int(h * scale)),
+                              interpolation=cv2.INTER_AREA)
+        else:
+            small = image
+        
+        if len(small.shape) == 3:
+            denoised = cv2.fastNlMeansDenoisingColored(small, None,
                                                        h=10,
                                                        hColor=10,
                                                        templateWindowSize=7,
                                                        searchWindowSize=21)
         else:
-            denoised = cv2.fastNlMeansDenoising(image, None, 
+            denoised = cv2.fastNlMeansDenoising(small, None,
                                                 h=10,
                                                 templateWindowSize=7,
                                                 searchWindowSize=21)
+        
+        if max(h, w) > max_side:
+            denoised = cv2.resize(denoised, (w, h), interpolation=cv2.INTER_LINEAR)
+        
         return denoised
     
     def enhance_contrast(self, image: np.ndarray, 
@@ -226,12 +239,13 @@ class InsideHiveBeeDetector:
     def __init__(self, model_path: str = "yolov8m.pt",
                  conf_threshold: float = 0.2,
                  iou_threshold: float = 0.45,
-                 device: str = "cuda:0",
+                 device: str = None,
                  use_enhancement: bool = True):
+        from utils.common import get_device
         self.model_path = model_path
         self.conf_threshold = conf_threshold
         self.iou_threshold = iou_threshold
-        self.device = device
+        self.device = device if device is not None else get_device()
         self.use_enhancement = use_enhancement
         
         self.enhancer = InfraredImageEnhancer()
@@ -317,7 +331,7 @@ class InsideHiveTracker:
             model_path=config.get('model_path', 'yolov8m.pt'),
             conf_threshold=config.get('conf_threshold', 0.2),
             iou_threshold=config.get('iou_threshold', 0.45),
-            device=config.get('device', 'cuda:0'),
+            device=config.get('device', None),
             use_enhancement=config.get('use_enhancement', True)
         )
         
@@ -569,7 +583,7 @@ def create_inside_tracker(config: Dict = None) -> InsideHiveTracker:
             'model_path': 'yolov8m.pt',
             'conf_threshold': 0.2,
             'iou_threshold': 0.45,
-            'device': 'cuda:0',
+            'device': None,
             'use_enhancement': True,
             'max_age': 30,
             'min_hits': 2

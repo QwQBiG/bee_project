@@ -2,7 +2,7 @@ tracker:
   model_path: "artifacts/models/honey_bee_detector_yolov8s.pt"
   conf_threshold: 0.15
   iou_threshold: 0.45
-  device: "cuda:0"
+  device: "cpu"
   use_enhancement: true
   max_age: 30
   min_hits: 2

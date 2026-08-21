@@ -14,6 +14,17 @@ from functools import wraps
 import numpy as np
 
 
+def get_device() -> str:
+    """自动检测最佳可用设备（CUDA > MPS > CPU）"""
+    import torch
+    if torch.cuda.is_available():
+        return "cuda:0"
+    elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+        return "mps"
+    else:
+        return "cpu"
+
+
 def setup_logging(log_dir: str = "logs", log_level: int = logging.INFO):
     """设置日志配置"""
     log_dir = Path(log_dir)

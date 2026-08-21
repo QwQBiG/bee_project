@@ -44,12 +44,13 @@ class OutsideHiveBeeDetector:
     def __init__(self, model_path: str = "yolov8m.pt", 
                  conf_threshold: float = 0.25,
                  iou_threshold: float = 0.45,
-                 device: str = "cuda:0",
+                 device: str = None,
                  imgsz: int = 640):
+        from utils.common import get_device
         self.model_path = model_path
         self.conf_threshold = conf_threshold
         self.iou_threshold = iou_threshold
-        self.device = device
+        self.device = device if device is not None else get_device()
         self.imgsz = imgsz
         
         if HAS_YOLO:
@@ -525,7 +526,7 @@ class OutsideHiveTracker:
             model_path=config.get('model_path', 'yolov8m.pt'),
             conf_threshold=config.get('conf_threshold', 0.25),
             iou_threshold=config.get('iou_threshold', 0.45),
-            device=config.get('device', 'cuda:0'),
+            device=config.get('device', None),
             imgsz=config.get('imgsz', 640)
         )
         
@@ -668,7 +669,7 @@ def create_outside_tracker(config: Dict = None) -> OutsideHiveTracker:
             'model_path': 'yolov8m.pt',
             'conf_threshold': 0.25,
             'iou_threshold': 0.45,
-            'device': 'cuda:0',
+            'device': None,
             'tracker_type': 'deepsort',
             'max_age': 30,
             'min_confidence': 0.3
