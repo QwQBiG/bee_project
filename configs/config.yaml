@@ -1,5 +1,24 @@
 # 智慧养蜂蜜蜂识别项目配置
 
+# 巢外跟踪器配置（多模态模式使用）
+outside_tracker:
+  model_path: "artifacts/models/hive_entrance_bee_yolov8n.pt"
+  conf_threshold: 0.10
+  iou_threshold: 0.45
+  imgsz: 1280
+  tracker_type: "deepsort"
+  max_age: 10
+  min_confidence: 0.10
+
+# 巢内跟踪器配置（多模态模式使用）
+inside_tracker:
+  model_path: "artifacts/models/honey_bee_detector_yolov8s.pt"
+  conf_threshold: 0.15
+  iou_threshold: 0.45
+  use_enhancement: true
+  max_age: 30
+  min_hits: 2
+
 ## 模型配置
 model:
   # 巢外可见光检测模型

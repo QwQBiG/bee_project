@@ -22,8 +22,9 @@ class OutsideHiveProcessor:
     def __init__(self, config: Dict):
         self.config = config
         
-        # 初始化跟踪器
-        self.tracker = create_outside_tracker(config.get('tracker', {}))
+        # 初始化跟踪器（优先使用 outside_tracker 配置，兼容单 tracker 配置）
+        self.tracker = create_outside_tracker(
+            config.get('outside_tracker', config.get('tracker', {})))
         
         # 初始化行为量化器
         self.quantifier = create_behavior_quantifier(config.get('behavior', {}))
@@ -169,7 +170,8 @@ class InsideHiveProcessor:
         self.config = config
         
         # 初始化跟踪器
-        self.tracker = create_inside_tracker(config.get('tracker', {}))
+        self.tracker = create_inside_tracker(
+            config.get('inside_tracker', config.get('tracker', {})))
         
         # 初始化分析器
         self.analyzer = InsideHiveAnalyzer()
@@ -307,8 +309,13 @@ class MultiModalProcessor:
         
         # 获取视频信息
         fps = int(outside_cap.get(cv2.CAP_PROP_FPS))
-        width = int(outside_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(outside_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        width_out = int(outside_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height_out = int(outside_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        width_in = int(inside_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height_in = int(inside_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        combined_height = min(height_out, height_in)
+        combined_width = int(width_out * combined_height / height_out) + int(width_in * combined_height / height_in)
         
         # 创建视频写入器
         writer = None
@@ -319,9 +326,9 @@ class MultiModalProcessor:
             
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             writer = cv2.VideoWriter(
-                str(output_dir / "outside_result.mp4"), fourcc, fps, (width, height))
+                str(output_dir / "outside_result.mp4"), fourcc, fps, (width_out, height_out))
             combined_writer = cv2.VideoWriter(
-                str(output_dir / "combined_result.mp4"), fourcc, fps, (width * 2, height))
+                str(output_dir / "combined_result.mp4"), fourcc, fps, (combined_width, combined_height))
         
         frame_idx = 0
         start_time = time.time()
@@ -357,6 +364,16 @@ class MultiModalProcessor:
             if writer:
                 writer.write(annotated_out)
             if combined_writer:
+                h_out, w_out = annotated_out.shape[:2]
+                h_in, w_in = annotated_in.shape[:2]
+                if h_out != h_in:
+                    target_h = min(h_out, h_in)
+                    if h_out > target_h:
+                        new_w = int(w_out * target_h / h_out)
+                        annotated_out = cv2.resize(annotated_out, (new_w, target_h))
+                    if h_in > target_h:
+                        new_w = int(w_in * target_h / h_in)
+                        annotated_in = cv2.resize(annotated_in, (new_w, target_h))
                 combined = np.hstack([annotated_out, annotated_in])
                 combined_writer.write(combined)
             
