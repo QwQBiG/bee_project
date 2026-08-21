@@ -362,7 +362,7 @@ class OutsideHiveTracker:
         )
 
         # 优先使用 Ultralytics 官方多目标跟踪器。
-        tracker_type = str(config.get('tracker_type', 'bytetrack')).lower()
+        tracker_type = str(config.get('tracker_type', 'botsort')).lower()
         self.uses_official_tracker = tracker_type in {'botsort', 'bytetrack'}
         if self.uses_official_tracker:
             tracker_config = config.get('tracker_config') or f'{tracker_type}.yaml'
@@ -513,7 +513,7 @@ def create_outside_tracker(config: Dict = None) -> OutsideHiveTracker:
             'conf_threshold': 0.25,
             'iou_threshold': 0.45,
             'device': None,
-            'tracker_type': 'bytetrack',
+            'tracker_type': 'botsort',
             'max_age': 30,
             'min_confidence': 0.3
         }

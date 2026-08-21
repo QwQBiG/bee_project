@@ -76,7 +76,7 @@ def parse_args():
                        help='运行设备（默认自动检测：CUDA > MPS > CPU）')
     parser.add_argument('--tracker', type=str, default=None,
                        choices=['botsort', 'bytetrack', 'motion_iou'],
-                       help='跟踪后端（默认使用配置文件，竞赛模式推荐 bytetrack）')
+                       help='跟踪后端（默认使用配置文件，竞赛准确性优先 botsort，速度优先 bytetrack）')
     
     return parser.parse_args()
 

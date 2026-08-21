@@ -6,8 +6,8 @@ outside_tracker:
   conf_threshold: 0.10
   iou_threshold: 0.45
   imgsz: 1280
-  tracker_type: "bytetrack"
-  tracker_config: "bytetrack.yaml"
+  tracker_type: "botsort"
+  tracker_config: "botsort.yaml"
   max_age: 10
   min_confidence: 0.10
 
@@ -46,7 +46,7 @@ model:
 
   # 跟踪器配置
   tracker:
-    type: "bytetrack"  # bytetrack, botsort；实际推理使用顶层 tracker_type
+    type: "botsort"    # botsort, bytetrack；实际推理使用顶层 tracker_type
     max_age: 30        # 最大丢失帧数
     min_confidence: 0.3
     nms_max_overlap: 0.7
