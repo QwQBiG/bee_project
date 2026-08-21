@@ -4,6 +4,8 @@ tracker:
   iou_threshold: 0.45
   device: null
   use_enhancement: true
+  tracker_type: "bytetrack"
+  tracker_config: "bytetrack.yaml"
   max_age: 30
   min_hits: 2
 

@@ -6,6 +6,7 @@ torchvision>=0.15.0
 
 # 深度学习目标检测
 ultralytics>=8.0.0  # YOLOv8
+lap>=0.5.12  # Ultralytics ByteTrack/BoT-SORT 匹配依赖
 
 # OpenCV
 opencv-python>=4.8.0

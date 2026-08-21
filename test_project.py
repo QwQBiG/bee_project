@@ -27,7 +27,7 @@ def test_imports():
                 config = yaml.safe_load(f)
             print(f"  [OK] 配置文件加载成功")
             print(f"       - 巢外检测模型: {config.get('model', {}).get('outside_detector', {}).get('model_type', 'N/A')}")
-            print(f"       - 跟踪器类型: {config.get('model', {}).get('tracker', {}).get('type', 'N/A')}")
+            print(f"       - 跟踪器类型: {config.get('outside_tracker', {}).get('tracker_type', 'N/A')}")
         else:
             print(f"  [WARN] 配置文件不存在")
     except Exception as e:
@@ -165,6 +165,8 @@ def test_code_files():
         'annotation/annotator.py',
         'tracking/outside_tracker.py',
         'tracking/inside_tracker.py',
+        'tracking/ultralytics_mot.py',
+        'tools/compare_trackers.py',
         'behavior/quantifier.py',
         'visualization/visualizer.py',
         'inference/processor.py',
@@ -204,8 +206,9 @@ def test_function_signatures():
     key_functions = {
         'main.py': ['parse_args', 'load_config', 'run_demo', 'run_outside_mode', 
                    'run_inside_mode', 'run_multi_mode', 'run_annotate_mode', 'main'],
-        'tracking/outside_tracker.py': ['OutsideHiveBeeDetector', 'DeepSORTTracker', 
-                                       'ByteTracker', 'OutsideHiveTracker', 'create_outside_tracker'],
+        'tracking/outside_tracker.py': ['OutsideHiveBeeDetector', 'MotionIoUTracker',
+                                       'OutsideHiveTracker', 'create_outside_tracker'],
+        'tracking/ultralytics_mot.py': ['MOTTrack', 'UltralyticsMOTTracker'],
         'tracking/inside_tracker.py': ['InfraredImageEnhancer', 'BeePoseEstimator',
                                        'InsideHiveBeeDetector', 'InsideHiveTracker', 'create_inside_tracker'],
         'behavior/quantifier.py': ['TrackletBuilder', 'BehaviorClassifier',

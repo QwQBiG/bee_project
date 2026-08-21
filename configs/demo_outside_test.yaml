@@ -4,7 +4,8 @@ tracker:
   iou_threshold: 0.45
   device: null
   imgsz: 1280
-  tracker_type: "deepsort"
+  tracker_type: "bytetrack"
+  tracker_config: "bytetrack.yaml"
   max_age: 10
   min_confidence: 0.10
 
