@@ -1,59 +1,17 @@
-# 智慧养蜂蜜蜂识别与行为量化研究项目
+"""模型训练与迁移学习模块。"""
 
-from .annotator import (
-    BeeAnnotationConfig,
-    VideoAnnotationExtractor,
-    COCOAnnotationConverter,
-    MOTAnnotationConverter,
-    ManualAnnotationTool,
-    YOLOAnnotationConverter,
-    create_sample_annotations
+from .trainer import (
+    BeeDataset,
+    YOLOTrainer,
+    TransferLearning,
+    create_training_config,
 )
 
-from .outside_tracker import (
-    OutsideHiveBeeDetector,
-    DeepSORTTracker,
-    ByteTracker,
-    OutsideHiveTracker,
-    create_outside_tracker
-)
+__all__ = [
+    "BeeDataset",
+    "YOLOTrainer",
+    "TransferLearning",
+    "create_training_config",
+]
 
-from .inside_tracker import (
-    InfraredImageEnhancer,
-    BeePoseEstimator,
-    InsideHiveBeeDetector,
-    InsideHiveTracker,
-    InsideHiveAnalyzer,
-    create_inside_tracker
-)
-
-from .quantifier import (
-    IndividualBehavior,
-    GroupBehavior,
-    TrackletBuilder,
-    BehaviorClassifier,
-    ActivityIntensityAnalyzer,
-    SpatialDensityAnalyzer,
-    BehaviorQuantifier,
-    HiveEntranceAnalyzer,
-    create_behavior_quantifier
-)
-
-from .visualizer import (
-    ColorGenerator,
-    TrackVisualizer,
-    BehaviorVisualizer,
-    DensityMapVisualizer,
-    StatisticsPlotter,
-    VideoAnnotator,
-    create_visualizer
-)
-
-from .processor import (
-    OutsideHiveProcessor,
-    InsideHiveProcessor,
-    MultiModalProcessor,
-    load_config
-)
-
-__version__ = '1.0.0'
+__version__ = "1.0.0"

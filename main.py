@@ -74,6 +74,9 @@ def parse_args():
                        help='显示结果视频')
     parser.add_argument('--device', type=str, default=None,
                        help='运行设备（默认自动检测：CUDA > MPS > CPU）')
+    parser.add_argument('--tracker', type=str, default=None,
+                       choices=['botsort', 'bytetrack', 'motion_iou'],
+                       help='跟踪后端（默认使用配置文件，竞赛模式推荐 bytetrack）')
     
     return parser.parse_args()
 
@@ -96,6 +99,23 @@ def apply_device_override(config: dict, device: str = None) -> dict:
         section = config.get(section_name)
         if isinstance(section, dict):
             section['device'] = device
+    return config
+
+
+def apply_tracker_override(config: dict, tracker_type: str = None) -> dict:
+    """将命令行跟踪后端同步到所有可能使用的 tracker 配置。"""
+    if tracker_type is None:
+        return config
+
+    for section_name in ('tracker', 'outside_tracker', 'inside_tracker'):
+        section = config.get(section_name)
+        if isinstance(section, dict):
+            section['tracker_type'] = tracker_type
+            section['tracker_config'] = (
+                f'{tracker_type}.yaml'
+                if tracker_type in ('botsort', 'bytetrack')
+                else None
+            )
     return config
 
 
@@ -141,7 +161,7 @@ def run_demo():
             from tracking.outside_tracker import create_outside_tracker
             outside_tracker = create_outside_tracker()
             print("  - YOLOv8检测器加载成功")
-            print("  - DeepSORT跟踪器加载成功")
+            print("  - BoT-SORT跟踪器加载成功")
         except Exception as e:
             print(f"  - 初始化警告: {e}")
     
@@ -212,6 +232,7 @@ def run_outside_mode(args):
     
     config = load_config(args.config)
     config = apply_device_override(config, args.device)
+    config = apply_tracker_override(config, args.tracker)
     
     processor = OutsideHiveProcessor(config)
     
@@ -237,6 +258,7 @@ def run_inside_mode(args):
     
     config = load_config(args.config)
     config = apply_device_override(config, args.device)
+    config = apply_tracker_override(config, args.tracker)
     
     processor = InsideHiveProcessor(config)
     
@@ -263,6 +285,7 @@ def run_multi_mode(args):
     
     config = load_config(args.config)
     config = apply_device_override(config, args.device)
+    config = apply_tracker_override(config, args.tracker)
     
     processor = MultiModalProcessor(config, config)
     
