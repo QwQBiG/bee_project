@@ -55,7 +55,7 @@ class OutsideHiveBeeDetector:
         
         if HAS_YOLO:
             self.model = YOLO(model_path)
-            self.model.to(device)
+            self.model.to(self.device)
         else:
             self.model = None
             print("Warning: ultralytics not available, using mock detector")

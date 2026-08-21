@@ -86,6 +86,19 @@ def load_config(config_path: str = None) -> dict:
     return {}
 
 
+def apply_device_override(config: dict, device: str = None) -> dict:
+    """将命令行设备参数同步到所有可能使用的 tracker 配置。"""
+    if device is None:
+        return config
+
+    config['device'] = device
+    for section_name in ('tracker', 'outside_tracker', 'inside_tracker'):
+        section = config.get(section_name)
+        if isinstance(section, dict):
+            section['device'] = device
+    return config
+
+
 def check_dependencies():
     """检查依赖是否已安装"""
     missing_deps = []
@@ -198,7 +211,7 @@ def run_outside_mode(args):
     from inference.processor import OutsideHiveProcessor
     
     config = load_config(args.config)
-    config['device'] = args.device
+    config = apply_device_override(config, args.device)
     
     processor = OutsideHiveProcessor(config)
     
@@ -223,7 +236,7 @@ def run_inside_mode(args):
     from inference.processor import InsideHiveProcessor
     
     config = load_config(args.config)
-    config['device'] = args.device
+    config = apply_device_override(config, args.device)
     
     processor = InsideHiveProcessor(config)
     
@@ -249,7 +262,7 @@ def run_multi_mode(args):
     from inference.processor import MultiModalProcessor
     
     config = load_config(args.config)
-    config['device'] = args.device
+    config = apply_device_override(config, args.device)
     
     processor = MultiModalProcessor(config, config)
     

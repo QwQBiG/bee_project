@@ -2,7 +2,7 @@ tracker:
   model_path: "artifacts/models/hive_entrance_bee_yolov8n.pt"
   conf_threshold: 0.10
   iou_threshold: 0.45
-  device: "cpu"
+  device: null
   imgsz: 1280
   tracker_type: "deepsort"
   max_age: 10

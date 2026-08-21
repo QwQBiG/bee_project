@@ -254,7 +254,7 @@ class InsideHiveBeeDetector:
         try:
             from ultralytics import YOLO
             self.model = YOLO(model_path)
-            self.model.to(device)
+            self.model.to(self.device)
         except:
             self.model = None
             print("Warning: Using mock detector for inside hive")

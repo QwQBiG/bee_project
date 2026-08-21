@@ -18,11 +18,14 @@ def get_device() -> str:
     """自动检测最佳可用设备（CUDA > MPS > CPU）"""
     import torch
     if torch.cuda.is_available():
+        gpu_name = torch.cuda.get_device_name(0)
+        print(f"[设备] 检测到 CUDA GPU：{gpu_name}，使用 cuda:0")
         return "cuda:0"
-    elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+    if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+        print("[设备] 检测到 Apple GPU，使用 MPS")
         return "mps"
-    else:
-        return "cpu"
+    print("[设备] 未检测到 CUDA/MPS，当前使用 CPU。若设备支持 GPU，请检查驱动和 PyTorch 安装，或使用 --device 指定设备。")
+    return "cpu"
 
 
 def setup_logging(log_dir: str = "logs", log_level: int = logging.INFO):
