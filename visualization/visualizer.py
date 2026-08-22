@@ -186,7 +186,7 @@ class BehaviorVisualizer:
 
 
 class DensityMapVisualizer:
-    """密度图可视化器"""
+    """密度图可视化器（平滑热力图，使用 OpenCV colormap）"""
     
     def __init__(self, grid_size: Tuple[int, int] = (10, 10)):
         self.grid_size = grid_size
@@ -194,7 +194,7 @@ class DensityMapVisualizer:
     def draw_density_map(self, frame: np.ndarray, 
                          density_map: np.ndarray,
                          alpha: float = 0.5) -> np.ndarray:
-        """在帧上叠加密度热力图
+        """在帧上叠加密度热力图（平滑插值）
         
         Args:
             frame: 输入帧
@@ -205,61 +205,26 @@ class DensityMapVisualizer:
             带密度图的帧
         """
         h, w = frame.shape[:2]
-        grid_h, grid_w = self.grid_size
         
-        # 创建热力图
-        heatmap = np.zeros((h, w, 3), dtype=np.uint8)
-        
-        cell_h = h / grid_h
-        cell_w = w / grid_w
-        
-        # 归一化密度图
-        if np.max(density_map) > 0:
-            normalized = density_map / np.max(density_map)
+        # 归一化：按 max() 归一化（概率图最大值常 < 0.15，直接 ×255 会过暗）
+        dmax = np.max(density_map)
+        if dmax > 0:
+            normalized = (density_map / dmax * 255).astype(np.uint8)
         else:
-            normalized = density_map
+            # max() == 0 时除零保护，直接返回原帧
+            return frame
         
-        # 绘制热力图
-        for i in range(grid_h):
-            for j in range(grid_w):
-                value = normalized[i, j]
-                if value > 0.1:
-                    # 颜色从蓝到红
-                    color = self._value_to_color(value)
-                    
-                    y1 = int(i * cell_h)
-                    y2 = int((i + 1) * cell_h)
-                    x1 = int(j * cell_w)
-                    x2 = int((j + 1) * cell_w)
-                    
-                    cv2.rectangle(heatmap, (x1, y1), (x2, y2), color, -1)
+        # 将小尺寸密度图双线性插值放大到帧尺寸，自动产生平滑过渡
+        density_resized = cv2.resize(
+            normalized, (w, h), interpolation=cv2.INTER_LINEAR)
+        
+        # 使用 OpenCV 内置 colormap（JET: 蓝→青→绿→黄→红，比手写 _value_to_color 更平滑）
+        heatmap = cv2.applyColorMap(density_resized, cv2.COLORMAP_JET)
         
         # 叠加到原图
         output = cv2.addWeighted(frame, 1 - alpha, heatmap, alpha, 0)
         
         return output
-    
-    def _value_to_color(self, value: float) -> Tuple[int, int, int]:
-        """将密度值转换为颜色"""
-        # 蓝->绿->黄->红
-        if value < 0.25:
-            r = 0
-            g = int(255 * value * 4)
-            b = 255
-        elif value < 0.5:
-            r = 0
-            g = 255
-            b = int(255 * (0.5 - value) * 4)
-        elif value < 0.75:
-            r = int(255 * (value - 0.5) * 4)
-            g = 255
-            b = 0
-        else:
-            r = 255
-            g = int(255 * (1 - value) * 4)
-            b = 0
-        
-        return (b, g, r)
 
 
 class StatisticsPlotter:
