@@ -49,10 +49,6 @@ model:
     type: "botsort"    # botsort, bytetrack；实际推理使用顶层 tracker_type
     max_age: 30        # 最大丢失帧数
     min_confidence: 0.3
-    nms_max_overlap: 0.7
-    max_iou_distance: 0.7
-    max_feature_distance: 0.2
-    nn_budget: 100
 
 ## 数据配置
 data:

@@ -32,6 +32,7 @@ def build_config(config_path: str, mode: str, tracker_type: str) -> dict:
 
 def run_one(video_path: str, config: dict, mode: str, max_frames: int) -> dict:
     tracker = InsideHiveTracker(config) if mode == "inside" else OutsideHiveTracker(config)
+    actual_tracker_type = getattr(tracker, 'tracker_type', config['tracker_type'])
     capture = cv2.VideoCapture(video_path)
     if not capture.isOpened():
         raise ValueError(f"Cannot open video: {video_path}")
@@ -55,7 +56,8 @@ def run_one(video_path: str, config: dict, mode: str, max_frames: int) -> dict:
 
     elapsed = time.perf_counter() - started
     return {
-        "tracker": config["tracker_type"],
+        "tracker": actual_tracker_type,
+        "requested_tracker": config["tracker_type"],
         "frames": frame_count,
         "source_fps": source_fps,
         "mean_detections": sum(detection_counts) / max(frame_count, 1),

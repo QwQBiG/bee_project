@@ -6,7 +6,10 @@ torchvision>=0.15.0
 
 # 深度学习目标检测
 ultralytics>=8.0.0  # YOLOv8
-lap>=0.5.12  # Ultralytics ByteTrack/BoT-SORT 匹配依赖
+# lap>=0.5.12  # [可选] Ultralytics 内置 ByteTrack/BoT-SORT 的匈牙利匹配依赖。
+                # 仅在 Windows/Linux x86_64 上可通过 pip 安装。
+                # macOS ARM（Apple Silicon）用户请跳过此项，项目会自动降级为
+                # motion_iou 兼容后端，无需额外依赖。
 
 # OpenCV
 opencv-python>=4.8.0

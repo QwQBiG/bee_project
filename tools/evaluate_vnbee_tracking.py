@@ -103,6 +103,7 @@ def evaluate(args: argparse.Namespace) -> dict:
     ground_truth = load_ground_truth(args.gt)
     config = build_tracker_config(args.config, args.tracker)
     tracker = OutsideHiveTracker(config)
+    actual_tracker_type = getattr(tracker, 'tracker_type', args.tracker)
     capture = cv2.VideoCapture(args.video)
     if not capture.isOpened():
         raise ValueError(f"无法打开视频：{args.video}")
@@ -193,7 +194,8 @@ def evaluate(args: argparse.Namespace) -> dict:
     mota = 1.0 - (track_fn + track_fp + id_switches) / gt_total if gt_total else 0.0
     idf1 = 2 * idtp / (2 * idtp + idfn + idfp) if (2 * idtp + idfn + idfp) else 0.0
     return {
-        "tracker": args.tracker,
+        "tracker": actual_tracker_type,
+        "requested_tracker": args.tracker,
         "video": args.video,
         "ground_truth": args.gt,
         "frames_evaluated": frame_number,
