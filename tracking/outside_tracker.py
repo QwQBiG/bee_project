@@ -506,14 +506,10 @@ class OutsideHiveTracker:
             cv2.putText(output, f"ID:{track.track_id}", (x, y-5),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-            # 绘制轨迹
+            # 绘制轨迹（polylines 一次绘制整条折线，避免逐条 line 的重复 Python 调用）
             if len(track.trajectory) > 1:
-                for i in range(1, len(track.trajectory)):
-                    pt1 = (int(track.trajectory[i-1][0]),
-                          int(track.trajectory[i-1][1]))
-                    pt2 = (int(track.trajectory[i][0]),
-                          int(track.trajectory[i][1]))
-                    cv2.line(output, pt1, pt2, color, 1)
+                pts = np.array(track.trajectory, dtype=np.int32).reshape((-1, 1, 2))
+                cv2.polylines(output, [pts], isClosed=False, color=color, thickness=1)
 
         # 绘制统计信息
         cv2.putText(output, f"Tracks: {len(tracks)}", (10, 30),
