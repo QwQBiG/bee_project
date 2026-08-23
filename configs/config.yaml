@@ -105,6 +105,15 @@ behavior:
     aggregation_threshold: 10     # 聚集检测阈值
     activity_calm_threshold: 0.3  # 活跃/安静阈值
 
+# 巢内红外视频的可解释分析阈值。速度单位为像素/帧，需按相机视角标定。
+inside_metrics:
+  density_grid: [10, 10]
+  stationary_speed: 0.6
+  stationary_min_frames: 30
+  pose_mismatch_degrees: 75
+  pose_min_speed: 1.0
+  cluster_share_threshold: 0.20
+
 ## 可视化配置
 visualization:
   show_tracks: true

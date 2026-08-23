@@ -205,7 +205,25 @@ Invoke-Item ".\output\demo_test\analysis\behavior_distribution.png"
 
 解释为：巢内红外流程已经完成检测、跟踪和行为统计，但高密度遮挡导致当前跟踪结果和行为标签仍属于 Demo 级输出，不能宣称已经达到比赛精度。
 
-### 4. 大概
+### 4. 生成巢内指标与养蜂建议报告
+
+运行巢内模式时，系统会额外生成 `inside_stats.json`（结构化指标）和
+`inside_analysis_report.html`（可直接打开的中文报告）：
+
+```powershell
+& $py main.py `
+  --mode inside `
+  --video "data\你的巢内红外视频.mp4" `
+  --output "output\inside_analysis" `
+  --config "configs\demo_inside_test.yaml" `
+  --device cuda:0
+
+Invoke-Item ".\output\inside_analysis\inside_analysis_report.html"
+```
+
+报告涵盖个体朝向/轨迹、姿态候选、群体活跃度、局部高密度聚集和长时间静止五类指标。无确认轨迹时会显示“数据不足”，不会输出生物学预警；翅膀高频振动等细粒度行为仍需要专用关键点或高帧率模型验证。
+
+### 5. 大概
 
 > 今天展示的是一个可运行的端到端 Demo。输入一段巢内红外或巢外视频，系统会依次完成蜜蜂检测、轨迹关联、行为字段生成、结果视频保存和数据分析。
 

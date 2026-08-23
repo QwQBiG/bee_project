@@ -20,6 +20,15 @@ behavior:
     resting_threshold: 0.5
     wandering_threshold: 3.0
 
+# 巢内红外视频报告的候选预警阈值；速度单位为像素/帧。
+inside_metrics:
+  density_grid: [10, 10]
+  stationary_speed: 0.6
+  stationary_min_frames: 30
+  pose_mismatch_degrees: 75
+  pose_min_speed: 1.0
+  cluster_share_threshold: 0.20
+
 visualization:
   show_tracks: true
   show_labels: true

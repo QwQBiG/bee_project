@@ -268,10 +268,16 @@ def run_inside_mode(args):
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    with open(output_dir / 'inside_stats.json', 'w') as f:
-        json.dump(stats, f, indent=2, default=str)
+    with open(output_dir / 'inside_stats.json', 'w', encoding='utf-8') as f:
+        json.dump(stats, f, ensure_ascii=False, indent=2, default=str)
+
+    # 单文件 HTML 报告：直接双击即可在浏览器查看，无需启动 Web 服务。
+    from visualization.inside_report import create_inside_report
+    report_path = create_inside_report(
+        stats.get('inside_metrics', {}), output_dir / 'inside_analysis_report.html')
     
     print(f"处理完成！结果已保存到: {output_dir}")
+    print(f"巢内分析报告: {report_path}")
     return stats
 
 

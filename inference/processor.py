@@ -13,6 +13,7 @@ import time
 from tracking.outside_tracker import OutsideHiveTracker, create_outside_tracker
 from tracking.inside_tracker import InsideHiveTracker, create_inside_tracker, InsideHiveAnalyzer
 from behavior.quantifier import BehaviorQuantifier, create_behavior_quantifier
+from behavior.inside_metrics import InsideHiveMetricsAnalyzer
 from visualization.visualizer import create_visualizer, VideoAnnotator
 
 
@@ -178,6 +179,8 @@ class InsideHiveProcessor:
         
         # 初始化行为量化器
         self.quantifier = create_behavior_quantifier(config.get('behavior', {}))
+        self.inside_metrics = InsideHiveMetricsAnalyzer(
+            config.get('inside_metrics', config.get('behavior', {}).get('inside_metrics', {})))
         
         # 初始化可视化器
         self.visualizer = create_visualizer(config.get('visualization', {}))
@@ -201,6 +204,7 @@ class InsideHiveProcessor:
         # 行为量化
         h, w = frame.shape[:2]
         self.quantifier.update(tracks, frame_idx, (h, w), is_inside_hive=True)
+        self.inside_metrics.update(tracks, frame_idx, (h, w))
         
         stats = {
             'frame': frame_idx,
@@ -277,6 +281,7 @@ class InsideHiveProcessor:
             'group_summary': self.quantifier.get_group_summary(),
             'anomalies': self.quantifier.detect_anomalies()
         }
+        self.stats['inside_metrics'] = self.inside_metrics.build_report()
         self.stats['processing_time'] = time.time() - start_time
         
         return self.stats
