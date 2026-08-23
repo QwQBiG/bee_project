@@ -15,6 +15,19 @@ behavior:
   density_grid: [10, 10]
   frame_size: [720, 1080]
 
+# 花粉团候选分析。入口区域为相对坐标 [x, y, width, height]，须按相机画面标定。
+pollen_analysis:
+  enabled: true
+  entrance_region: [0.40, 0.40, 0.20, 0.25]
+  # OpenCV HSV 黄/橙色范围；不同光源和花粉颜色应使用标注样本重新标定。
+  hsv_lower: [15, 70, 70]
+  hsv_upper: [45, 255, 255]
+  min_color_ratio: 0.12
+  min_samples: 3
+  positive_sample_ratio: 0.60
+  min_inbound_events: 8
+  min_pollen_ratio: 0.15
+
 visualization:
   show_tracks: true
   show_detections: true

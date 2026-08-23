@@ -14,6 +14,7 @@ from tracking.outside_tracker import OutsideHiveTracker, create_outside_tracker
 from tracking.inside_tracker import InsideHiveTracker, create_inside_tracker, InsideHiveAnalyzer
 from behavior.quantifier import BehaviorQuantifier, create_behavior_quantifier
 from behavior.inside_metrics import InsideHiveMetricsAnalyzer
+from behavior.outside_pollen import OutsidePollenAnalyzer
 from visualization.visualizer import create_visualizer, VideoAnnotator
 
 
@@ -29,6 +30,7 @@ class OutsideHiveProcessor:
         
         # 初始化行为量化器
         self.quantifier = create_behavior_quantifier(config.get('behavior', {}))
+        self.pollen_analyzer = OutsidePollenAnalyzer(config.get('pollen_analysis', {}))
         
         # 初始化可视化器
         self.visualizer = create_visualizer(config.get('visualization', {}))
@@ -55,6 +57,7 @@ class OutsideHiveProcessor:
         # 行为量化
         h, w = frame.shape[:2]
         self.quantifier.update(tracks, frame_idx, (h, w), is_inside_hive=False)
+        self.pollen_analyzer.update(frame, tracks, frame_idx)
         
         # 获取统计
         individual_stats = self.quantifier.get_individual_summary()
@@ -159,6 +162,7 @@ class OutsideHiveProcessor:
         }
         
         self.stats['behavior_analysis'] = behavior_results
+        self.stats['pollen_analysis'] = self.pollen_analyzer.build_report()
         self.stats['processing_time'] = time.time() - start_time
         
         return self.stats

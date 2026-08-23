@@ -188,6 +188,10 @@ Invoke-Item ".\output\presentation_outside\analysis\counts_over_time.png"
 2. 彩色框和 `ID` 是连续帧匹配后形成的临时轨迹。
 3. 右侧或 JSON 中的统计用于说明程序输出，不等同于正式精度指标。
 
+巢外运行还会生成 `outside_pollen_report.html`。请先按实际画面在
+`configs/demo_outside_test.yaml` 的 `pollen_analysis.entrance_region` 标定蜂箱入口；
+它当前是颜色候选分析，不能替代经“携粉/未携粉”标注数据验证的专用模型。
+
 ### 3. 巢内结果采用“播放已有结果 + 说明”
 
 巢内完整视频处理时间较长，可以自行尝试复现。直接播放已经完成的结果：

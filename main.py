@@ -243,10 +243,15 @@ def run_outside_mode(args):
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    with open(output_dir / 'outside_stats.json', 'w') as f:
-        json.dump(stats, f, indent=2, default=str)
+    with open(output_dir / 'outside_stats.json', 'w', encoding='utf-8') as f:
+        json.dump(stats, f, ensure_ascii=False, indent=2, default=str)
+
+    from visualization.outside_pollen_report import create_outside_pollen_report
+    report_path = create_outside_pollen_report(
+        stats.get('pollen_analysis', {}), output_dir / 'outside_pollen_report.html')
     
     print(f"处理完成！结果已保存到: {output_dir}")
+    print(f"巢外采粉报告: {report_path}")
     return stats
 
 
