@@ -28,6 +28,27 @@ def get_device() -> str:
     return "cpu"
 
 
+def normalize_device(device=None) -> str:
+    """将命令行和配置中的设备写法规范为 PyTorch 可接受的形式。"""
+    if device is None:
+        return get_device()
+    value = str(device).strip().lower()
+    if not value or value == "auto":
+        return get_device()
+    if value.isdigit():
+        return f"cuda:{int(value)}"
+    if value == "cuda":
+        return "cuda:0"
+    if value.startswith("cuda:"):
+        index = value.split(":", 1)[1]
+        if index.isdigit():
+            return f"cuda:{int(index)}"
+        raise ValueError(f"无效 CUDA 设备: {device}")
+    if value in {"cpu", "mps"}:
+        return value
+    raise ValueError(
+        f"不支持的设备写法: {device!r}；可用 auto、0、cuda:0、mps 或 cpu")
+
 def setup_logging(log_dir: str = "logs", log_level: int = logging.INFO):
     """设置日志配置"""
     log_dir = Path(log_dir)

@@ -14,8 +14,18 @@ from tracking.outside_tracker import OutsideHiveTracker, create_outside_tracker
 from tracking.inside_tracker import InsideHiveTracker, create_inside_tracker, InsideHiveAnalyzer
 from behavior.quantifier import BehaviorQuantifier, create_behavior_quantifier
 from behavior.inside_metrics import InsideHiveMetricsAnalyzer
+from behavior.entrance_adapter import TrackEntranceAnalyzer
 from behavior.outside_pollen import OutsidePollenAnalyzer
+from behavior.trajectory_metrics import TrajectoryMetricsAnalyzer
+from inference.keypoint_pose import KeypointPoseEstimator
 from visualization.visualizer import create_visualizer, VideoAnnotator
+
+
+def verified_pose_distribution(analyzer, tracks, pose_enabled: bool):
+    """仅在关键点姿态模型启用时生成方向分布，防止几何启发式冒充头尾。"""
+    if not pose_enabled:
+        return None
+    return analyzer.analyze_pose_distribution(tracks)
 
 
 class OutsideHiveProcessor:
@@ -31,6 +41,9 @@ class OutsideHiveProcessor:
         # 初始化行为量化器
         self.quantifier = create_behavior_quantifier(config.get('behavior', {}))
         self.pollen_analyzer = OutsidePollenAnalyzer(config.get('pollen_analysis', {}))
+        self.entrance_analyzer = TrackEntranceAnalyzer(config.get('entrance_events', {}))
+        self.trajectory_metrics = TrajectoryMetricsAnalyzer(config.get('trajectory_metrics', {}))
+        self._seen_track_ids = set()
         
         # 初始化可视化器
         self.visualizer = create_visualizer(config.get('visualization', {}))
@@ -58,6 +71,9 @@ class OutsideHiveProcessor:
         h, w = frame.shape[:2]
         self.quantifier.update(tracks, frame_idx, (h, w), is_inside_hive=False)
         self.pollen_analyzer.update(frame, tracks, frame_idx)
+        entrance_events = self.entrance_analyzer.update(tracks, frame_idx, (h, w))
+        self.trajectory_metrics.update(tracks, frame_idx, (h, w))
+        self._seen_track_ids.update(int(track.track_id) for track in tracks)
         
         # 获取统计
         individual_stats = self.quantifier.get_individual_summary()
@@ -67,6 +83,7 @@ class OutsideHiveProcessor:
             'frame': frame_idx,
             'num_tracks': len(tracks),
             'num_detections': len(detections),
+            'entrance_events': [event.to_dict() for event in entrance_events],
             **group_stats
         }
         
@@ -103,6 +120,8 @@ class OutsideHiveProcessor:
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if fps > 0:
+            self.trajectory_metrics.set_video_fps(fps)
         
         print(f"Video info: {width}x{height}, {fps}fps, {total_frames} frames")
         
@@ -137,9 +156,7 @@ class OutsideHiveProcessor:
             self.stats['total_frames'] = frame_idx + 1
             self.stats['detection_history'].append(len(detections))
             self.stats['track_history'].append(len(tracks))
-            self.stats['total_tracks'] = max(self.stats['total_tracks'],
-                                            max([t.track_id for t in tracks]) + 1 
-                                            if tracks else 0)
+            self.stats['total_tracks'] = len(self._seen_track_ids)
             
             frame_idx += 1
             
@@ -161,8 +178,15 @@ class OutsideHiveProcessor:
             'anomalies': self.quantifier.detect_anomalies()
         }
         
+        self.entrance_analyzer.finalize()
+        entrance_report = self.entrance_analyzer.build_report()
+        entrance_counts = entrance_report['counts']
+        self.stats['entry_events'] = entrance_counts['entering']
+        self.stats['exit_events'] = entrance_counts['leaving']
+        self.stats['entrance_analysis'] = entrance_report
         self.stats['behavior_analysis'] = behavior_results
         self.stats['pollen_analysis'] = self.pollen_analyzer.build_report()
+        self.stats['trajectory_analysis'] = self.trajectory_metrics.build_report()
         self.stats['processing_time'] = time.time() - start_time
         
         return self.stats
@@ -185,6 +209,9 @@ class InsideHiveProcessor:
         self.quantifier = create_behavior_quantifier(config.get('behavior', {}))
         self.inside_metrics = InsideHiveMetricsAnalyzer(
             config.get('inside_metrics', config.get('behavior', {}).get('inside_metrics', {})))
+        self.trajectory_metrics = TrajectoryMetricsAnalyzer(config.get('trajectory_metrics', {}))
+        self.keypoint_pose = KeypointPoseEstimator(config.get('pose_model', {}))
+        self._seen_track_ids = set()
         
         # 初始化可视化器
         self.visualizer = create_visualizer(config.get('visualization', {}))
@@ -200,20 +227,25 @@ class InsideHiveProcessor:
         """处理单帧"""
         # 检测和跟踪
         tracks, detections = self.tracker.process_frame(frame)
+        pose_model_stats = self.keypoint_pose.update(frame, tracks)
         
         # 姿态分析
-        pose_stats = self.analyzer.analyze_pose_distribution(tracks)
+        pose_stats = verified_pose_distribution(
+            self.analyzer, tracks, self.keypoint_pose.enabled)
         activity_stats = self.analyzer.analyze_activity_patterns(tracks, frame_idx)
         
         # 行为量化
         h, w = frame.shape[:2]
         self.quantifier.update(tracks, frame_idx, (h, w), is_inside_hive=True)
         self.inside_metrics.update(tracks, frame_idx, (h, w))
+        self.trajectory_metrics.update(tracks, frame_idx, (h, w))
+        self._seen_track_ids.update(int(track.track_id) for track in tracks)
         
         stats = {
             'frame': frame_idx,
             'num_tracks': len(tracks),
             'pose_distribution': pose_stats,
+            'pose_model': pose_model_stats,
             'activity': activity_stats
         }
         
@@ -240,6 +272,8 @@ class InsideHiveProcessor:
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if fps > 0:
+            self.trajectory_metrics.set_video_fps(fps)
         
         print(f"Video info: {width}x{height}, {fps}fps, {total_frames} frames")
         
@@ -268,7 +302,10 @@ class InsideHiveProcessor:
             
             self.stats['total_frames'] = frame_idx + 1
             self.stats['track_history'].append(len(tracks))
-            self.stats['pose_distribution'].append(stats.get('pose_distribution', {}))
+            self.stats['total_tracks'] = len(self._seen_track_ids)
+            pose_distribution = stats.get('pose_distribution')
+            if pose_distribution is not None:
+                self.stats['pose_distribution'].append(pose_distribution)
             
             frame_idx += 1
             
@@ -285,7 +322,24 @@ class InsideHiveProcessor:
             'group_summary': self.quantifier.get_group_summary(),
             'anomalies': self.quantifier.detect_anomalies()
         }
-        self.stats['inside_metrics'] = self.inside_metrics.build_report()
+        inside_report = self.inside_metrics.build_report()
+        if not self.keypoint_pose.enabled:
+            guarded_names = set()
+            for metric in inside_report.get('metrics', []):
+                if 'mean_orientation_degrees' in metric or 'motion_alignment' in metric:
+                    metric.update(status='unknown', mean_orientation_degrees=None,
+                                  motion_alignment=None,
+                                  description='Pose model disabled; head-tail direction is unknown.')
+                    guarded_names.add(metric.get('name'))
+                if 'candidate_ratio' in metric or 'median_body_aspect_ratio' in metric:
+                    metric.update(status='candidate_only',
+                                  description='Bounding-box shape candidate only; not a head-tail or disease conclusion.')
+                    guarded_names.add(metric.get('name'))
+            inside_report['alerts'] = [item for item in inside_report.get('alerts', [])
+                                       if item.get('metric') not in guarded_names]
+        self.stats['inside_metrics'] = inside_report
+        self.stats['pose_model'] = self.keypoint_pose.build_report()
+        self.stats['trajectory_analysis'] = self.trajectory_metrics.build_report()
         self.stats['processing_time'] = time.time() - start_time
         
         return self.stats

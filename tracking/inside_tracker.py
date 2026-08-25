@@ -255,11 +255,11 @@ class InsideHiveBeeDetector:
                  iou_threshold: float = 0.45,
                  device: str = None,
                  use_enhancement: bool = True):
-        from utils.common import get_device
+        from utils.common import normalize_device
         self.model_path = model_path
         self.conf_threshold = conf_threshold
         self.iou_threshold = iou_threshold
-        self.device = device if device is not None else get_device()
+        self.device = normalize_device(device)
         self.use_enhancement = use_enhancement
 
         self.enhancer = InfraredImageEnhancer()
