@@ -1,7 +1,7 @@
 # Bee Project Demo 全部改动与原因
 
 整理日期：2026-07-23  
-项目目录：`D:\bee_project\bee_project`  
+项目目录：仓库根目录
 整理范围：本轮巢内红外与巢外蜂箱入口 Demo 测试期间，对项目源码、配置、模型、测试数据、分析工具及报告所做的改动。
 
 ## 1. 总览
@@ -397,7 +397,7 @@
 ### 9.2 没有创建新的项目虚拟环境
 
 - 最终使用：
-  - 我的本地py环境，即 `C:\Users\111\AppData\Local\Programs\Python\Python313\python.exe`
+  - 项目当前 Python 环境
   - PyTorch 2.13.0+cu132
   - Ultralytics 8.4.96
   - RTX 5060 Laptop GPU
@@ -448,8 +448,8 @@
 巢内：
 
 ```powershell
-$env:YOLO_CONFIG_DIR='D:\bee_project\bee_project\.ultralytics'
-& 'C:\Users\111\AppData\Local\Programs\Python\Python313\python.exe' main.py `
+$env:YOLO_CONFIG_DIR = Join-Path (Get-Location).Path '.ultralytics'
+python main.py `
   --mode inside `
   --video data\external\oist\oist_M13_ir_test_10s.mp4 `
   --output output\demo_test `
@@ -460,8 +460,8 @@ $env:YOLO_CONFIG_DIR='D:\bee_project\bee_project\.ultralytics'
 巢外：
 
 ```powershell
-$env:YOLO_CONFIG_DIR='D:\bee_project\bee_project\.ultralytics'
-& 'C:\Users\111\AppData\Local\Programs\Python\Python313\python.exe' main.py `
+$env:YOLO_CONFIG_DIR = Join-Path (Get-Location).Path '.ultralytics'
+python main.py `
   --mode outside `
   --video data\external\vnbee\vnbee_outside_test_2s.mp4 `
   --output output\demo_outside_test `
@@ -472,7 +472,7 @@ $env:YOLO_CONFIG_DIR='D:\bee_project\bee_project\.ultralytics'
 巢外数据分析：
 
 ```powershell
-& 'C:\Users\111\AppData\Local\Programs\Python\Python313\python.exe' `
+python `
   tools\analyze_outside_results.py `
   --stats output\demo_outside_test\outside_stats.json `
   --output output\demo_outside_test\analysis `

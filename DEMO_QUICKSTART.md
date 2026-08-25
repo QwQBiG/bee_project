@@ -149,10 +149,9 @@ Get-FileHash -Algorithm SHA256 -LiteralPath ".\artifacts\models\honey_bee_detect
 ### 1. 进入项目并确认环境
 
 ```powershell
-Set-Location -LiteralPath "D:\bee_project\bee_project"
-$py = "C:\Users\111\AppData\Local\Programs\Python\Python313\python.exe"
-$env:YOLO_CONFIG_DIR = "D:\bee_project\bee_project\.ultralytics"
-& $py test_project.py
+Set-Location -LiteralPath "<项目目录>"
+$env:YOLO_CONFIG_DIR = Join-Path (Get-Location).Path ".ultralytics"
+python test_project.py
 ```
 
 看到最后的成功提示后，说明代码、配置和主要接口检查通过。这个脚本只做自检，不会处理视频。

@@ -51,3 +51,7 @@ logs/
 data/external/oist/annotations/*.tgz
 data/external/oist/annotations/frame_annotations_30fps/
 data/external/oist/annotations/frame_annotations_70fps/
+
+# 官方原始视频的本地工作目录（可能包含大文件和本机绝对路径）
+datasets/official_work/
+datasets/official_pose/
