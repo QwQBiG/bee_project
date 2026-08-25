@@ -68,6 +68,20 @@ def parse_args():
                        help='批大小')
     parser.add_argument('--lr', type=float, default=0.001,
                        help='学习率')
+    parser.add_argument('--model', type=str,
+                       help='训练使用的初始权重或模型配置')
+    parser.add_argument('--data', type=str,
+                       help='通过数据门禁的 data.yaml')
+    parser.add_argument('--task', choices=['detect', 'pose'], default='pose',
+                       help='训练任务类型')
+    parser.add_argument('--imgsz', type=int, default=640,
+                       help='训练图像尺寸')
+    parser.add_argument('--workers', type=int, default=4,
+                       help='数据加载进程数')
+    parser.add_argument('--train_name', type=str, default='bee_pose',
+                       help='训练运行名称')
+    parser.add_argument('--dry_run', action='store_true',
+                       help='只执行训练前检查，不启动训练')
     
     # 其他选项
     parser.add_argument('--show', action='store_true',
@@ -314,88 +328,44 @@ def run_multi_mode(args):
 
 
 def run_annotate_mode(args):
-    """运行标注模式"""
-    print(f"运行数据标注工具: {args.video}")
-    
-    from annotation.annotator import VideoAnnotationExtractor, ManualAnnotationTool
-    import cv2
-    
-    extractor = VideoAnnotationExtractor(args.video, args.output)
-    
-    if not extractor.open_video():
-        print(f"错误: 无法打开视频 {args.video}")
-        return
-    
-    print(f"视频信息: {extractor.width}x{extractor.height}, {extractor.fps}fps")
-    print("按 'n' 下一帧, 'p' 上一帧, 's' 保存当前帧, 'q' 退出")
-    
-    tool = ManualAnnotationTool()
-    cv2.namedWindow('Annotation Tool')
-    cv2.setMouseCallback('Annotation Tool', tool.mouse_callback)
-    
-    current_frame = 0
-    
-    while True:
-        frame = extractor.get_frame(current_frame)
-        if frame is None:
-            break
-        
-        tool.set_frame(frame)
-        
-        while True:
-            display = tool.display()
-            cv2.imshow('Annotation Tool', display)
-            
-            key = cv2.waitKey(1) & 0xFF
-            
-            if key == ord('n'):
-                current_frame = min(current_frame + 1, extractor.total_frames - 1)
-                break
-            elif key == ord('p'):
-                current_frame = max(current_frame - 1, 0)
-                break
-            elif key == ord('s'):
-                # 保存标注
-                bboxes = tool.get_bboxes()
-                output_file = Path(args.output) / f"frame_{current_frame:06d}.json"
-                with open(output_file, 'w') as f:
-                    json.dump({'frame_id': current_frame, 'bboxes': bboxes}, f)
-                print(f"已保存帧 {current_frame} 的标注: {len(bboxes)} 个框")
-            elif key == ord('q'):
-                cv2.destroyAllWindows()
-                extractor.close()
-                return
-    
-    cv2.destroyAllWindows()
-    extractor.close()
+    """拒绝使用不兼容的早期框标注入口。"""
+    print("ERROR: 旧本地标注器不支持统一 JSON、头胸腹骨架和来源门禁。",
+          file=sys.stderr)
+    print("请按 doc/CVAT姿态标注与回导流程.md 建立和回导标注任务。", file=sys.stderr)
+    raise SystemExit(2)
 
 
 def run_train_mode(args):
-    """运行训练模式"""
-    print("运行模型训练...")
-    
-    config = load_config(args.config)
-    
-    # 更新训练参数
-    if 'training' not in config:
-        config['training'] = {}
-    config['training']['epochs'] = args.epochs
-    config['training']['batch_size'] = args.batch_size
-    config['training']['learning_rate'] = args.lr
-    
-    print(f"训练配置:")
-    print(f"  - Epochs: {args.epochs}")
-    print(f"  - Batch Size: {args.batch_size}")
-    print(f"  - Learning Rate: {args.lr}")
-    
-    # TODO: 实现完整的训练流程
-    print("\n注意: 完整的训练流程需要:")
-    print("  1. 准备标注数据集")
-    print("  2. 数据增强")
-    print("  3. 模型训练循环")
-    print("  4. 验证与测试")
-    print("  5. 模型导出")
-    print("\n请参考 docs/training_guide.md 获取详细训练指南")
+    """运行带数据来源门禁的 YOLO 训练。"""
+    if not args.model or not args.data:
+        print("ERROR: train 模式必须提供 --model 和 --data", file=sys.stderr)
+        raise SystemExit(2)
+
+    from tools.train_yolo import run_training
+    training_args = argparse.Namespace(
+        model=args.model,
+        data=args.data,
+        task=args.task,
+        epochs=args.epochs,
+        batch=args.batch_size,
+        imgsz=args.imgsz,
+        lr0=args.lr,
+        device=args.device or "auto",
+        workers=args.workers,
+        seed=42,
+        patience=30,
+        project=args.output,
+        name=args.train_name,
+        cache=None,
+        amp=True,
+        dry_run=args.dry_run,
+    )
+    try:
+        summary = run_training(training_args)
+    except (FileNotFoundError, RuntimeError, ValueError, json.JSONDecodeError) as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        raise SystemExit(2) from error
+    print(json.dumps(summary, ensure_ascii=False, indent=2, default=str))
 
 
 def main():
