@@ -1,93 +1,116 @@
-# CVAT 姿态标注与回导流程
+# CVAT Online 蜜蜂姿态标注与回导流程
 
-## 1. 适用范围
+## 1. 这项工作要完成什么
 
-本流程用于将巢内红外和巢外入口抽帧转换为可训练、可评测的整蜂检测与头胸腹姿态金标准。
+本流程使用 [CVAT Online](https://app.cvat.ai/) 标注巢内红外和巢外入口图片，不需要在电脑上部署标注服务。
 
-现有权重只提供待校正的整蜂候选框。候选框不是人工真值，头、胸和腹尖均需人工标注。
+人工需要为每只有效蜜蜂完成四项内容：
 
-## 2. 标签定义
+1. 校正整只蜜蜂的矩形框；
+2. 标出头部中心 `head`；
+3. 标出胸部中心 `thorax`；
+4. 标出腹部末端 `abdomen_tip`。
 
-姿态任务只使用一个骨架类别：
+现有模型生成的框只是候选结果，不是正确答案。人工仍需删除误检、补充漏检并校正位置。
 
-- 类别：`bee`
-- 关键点顺序：`head`、`thorax`、`abdomen_tip`
-- 骨架连线：`head → thorax → abdomen_tip`
+## 2. 第一次使用：先选择工作空间
 
-首轮姿态任务不区分工蜂、雄蜂、蜂王或携粉蜂。只有画面证据和独立标注规范充分时，才建立对应的专用分类数据集。
+打开 CVAT Online 并登录。页面右上角显示当前账号。
 
-关键点可见性：
+- 只有一人试用：可以保留 `Personal workspace`。
+- 两人共同标注：先点击右上角账号，选择 `Organization` → `+ Create`，创建组织并邀请另一名成员。
+
+需要协作时，创建项目之前必须切换到对应组织。个人空间中的项目不会自动共享给同学。免费方案的团队人数和任务数量有限，首批只安排少量试标。
+
+## 3. 创建姿态项目
+
+1. 进入顶部 `Projects` 页面。
+2. 点击右侧蓝色 `+`，选择 `Create new project`。
+3. 项目名称填写 `bee_pose_official`。
+4. 点击 `Add label`，标签名称填写 `bee`。
+5. 标签形状选择 `Skeleton`。
+6. 按顺序创建三个点：`head`、`thorax`、`abdomen_tip`。
+7. 添加两条连线：`head-thorax`、`thorax-abdomen_tip`。
+8. 点击 `Submit` 保存项目。
+
+三个点的顺序属于训练格式的一部分。项目创建后不得交换名称或顺序。
+
+## 4. 导入首批试标任务
+
+首批只导入两个小任务，不上传原始完整长视频，也不上传封存测试视频：
+
+- 巢外：`datasets/official_work/diverse_60/online/outside_pilot5.zip`
+- 巢内红外：`datasets/official_work/diverse_60/online/inside_pilot5_enhanced.zip`
+
+每个任务包含5张图片、候选框和回溯映射。候选框必须人工复核。
+
+导入步骤：
+
+1. 打开刚创建的 `bee_pose_official` 项目。
+2. 点击项目右上角 `Actions`。
+3. 选择 `Import dataset`。
+4. 格式选择 `Ultralytics YOLO Pose 1.0`。
+5. 选择一个 ZIP 试标包并提交。
+6. 进入顶部 `Requests`，等待状态变为 `Finished`。
+7. 返回项目，打开自动创建的任务和 Job。
+8. 第一个任务确认正常后，再按相同步骤导入另一个任务。
+
+若导入失败，不要重复创建项目或修改标签；记录页面错误信息并交由项目维护人员检查任务包。
+
+## 5. 每张图片怎么标
+
+打开 Job 后，按以下顺序处理当前图片：
+
+1. 检查候选框是否真的对应蜜蜂，误检框直接删除。
+2. 调整保留的框，使其包住完整蜜蜂，不只框头部或腹部。
+3. 找到漏掉的蜜蜂，使用 `Skeleton` 工具补充一个 `bee`。
+4. 将 `head` 放在头部中心，将 `thorax` 放在胸部中心，将 `abdomen_tip` 放在腹部末端。
+5. 清晰可见的点保持可见；被遮挡但位置可以合理确定时标记为遮挡；完全无法判断时标记为不可见。
+6. 按 `Ctrl+S` 保存，再切换到下一张图片。
+
+标注时遵守以下规则：
+
+- 当前任务范围内可辨认的蜜蜂应尽量全部标注；
+- 多只蜜蜂重叠时，每只分别标注；
+- 不把阴影、木板、线缆或蜂巢纹理当作蜜蜂；
+- 无法判断头尾时不根据运动方向猜测；
+- 严重重叠且无法分离的目标记录为困难样本，交给复核人员处理。
+
+关键点可见性对应关系：
 
 - `2`：清晰可见；
 - `1`：被遮挡，但位置可以合理确定；
 - `0`：无法标注或位于画面外。
 
-## 3. 任务包
+## 6. 第一批如何分工
 
-任务包由 `tools/export_yolo_pose.py` 生成，格式为 **Ultralytics YOLO Pose 1.0**。
+第一批先完成巢外5帧和巢内5帧，确认规则后再扩大数量。
 
-```powershell
-python tools/export_yolo_pose.py <统一标注目录> <抽帧目录> <任务目录> `
-  --include-non-manual --split train --scene inside_ir `
-  --collapse-to-bee --archive <任务包.zip>
-```
+- 标注者甲：巢外任务；
+- 标注者乙：巢内红外任务；
+- 每种场景至少抽取1帧交叉复核；
+- 发现标签定义不一致时先停止扩充，统一规则后再继续。
 
-任务包包含：
+首轮只做独立图片中的整蜂框和三个关键点。连续轨迹、固定个体 ID 和进出巢事件另建短视频任务，不与首轮姿态标注混在一起。
 
-- `images/train/`：待标注帧；
-- `labels/train/`：候选框和空关键点；
-- `data.yaml`：单类骨架数据集配置；
-- `annotation_map.json`：图像与原视频、原帧号的回溯映射；
-- `train.txt`：图像列表。
+## 7. 完成、复核与导出
 
-`annotation_map.json` 需在本地保留，不应由标注人员修改。
+1. 标注人员确认当前 Job 已保存，将状态设置为 `Completed`。
+2. 复核人员检查漏标、误标、边界框和三个关键点。
+3. 在任务的 `Actions` 中选择 `Export task dataset`。
+4. 格式选择 `Ultralytics YOLO Pose 1.0`。
+5. 下载标注 ZIP，并按任务名称和日期保存，不要解压后手工修改标签文件。
 
-## 4. CVAT 项目设置
-
-1. 在 CVAT 中创建用于蜜蜂姿态标注的项目。
-2. 创建名称为 `bee` 的 Skeleton 标签。
-3. 按顺序添加 `head`、`thorax`、`abdomen_tip` 三个点。
-4. 添加 `head-thorax` 和 `thorax-abdomen_tip` 两条连线。
-5. 将任务包按 `Ultralytics YOLO Pose 1.0` 格式导入。
-
-CVAT 要求任务中的骨架标签与导入数据兼容，项目创建后不应随意修改关键点顺序。
+Online 账号、密码和官方原始数据均不提交到 Git 仓库。导出的标注包应先本地备份，再交由项目工具回导和校验。
 
 参考：
 
+- [CVAT 创建任务](https://docs.cvat.ai/docs/manual/basics/create-annotation-task/)
+- [CVAT 导入数据集和标注](https://docs.cvat.ai/docs/manual/advanced/import-datasets/)
 - [Ultralytics YOLO Pose 格式](https://docs.cvat.ai/docs/dataset_management/formats/format-yolo-ultralytics/)
 - [CVAT 骨架标注](https://docs.cvat.ai/docs/annotation/manual-annotation/shapes/skeletons/)
 
-## 5. 人工校正规则
-
-每一帧都应执行以下检查：
-
-1. 删除落在背景、线缆、木板或蜂巢纹理上的错误候选。
-2. 为所有可辨认且满足任务范围的蜜蜂补充漏标框。
-3. 调整整蜂框，使其紧贴完整身体，不只框头部或腹部。
-4. 标注头部中心、胸部中心和腹部末端。
-5. 无法判断头腹方向时，不根据运动方向猜测。
-6. 严重重叠且无法分离的个体不强行拆分，应记录为困难样本。
-7. 同一连续片段需要跟踪评测时，使用 Track 模式保持同一个 `track_id`。
-8. 完全遮挡后无法确认身份时结束旧轨迹，不猜测重识别结果。
-
-需要在 CVAT 与统一 JSON 之间交换既有轨迹 ID 时，任务导出命令增加
-`--include-track-ids`。该选项只用于标注交换，不用于生成正式训练标签。
-
-检测金标准要求任务范围内的目标尽量完整标注；只修改已有候选而不补漏标，会导致召回率评测失真。
-
-## 6. 第一批质量控制
-
-第一批不直接扩大到全部视频，先完成试标：
-
-- 巢外5帧；
-- 巢内5帧；
-- 每种场景至少1帧由第二人独立复核；
-- 统一处理遮挡、画面边缘、极小目标和密集重叠规则；
-- 发现标签定义歧义时先修订规范，再继续剩余帧。
-
-试标通过后完成各20帧，并固定其中一部分作为测试集。相邻帧和同源视频片段不得跨训练、验证、测试集合。
-
-## 7. 从 CVAT 回导
+## 8. 从 CVAT 回导
 
 在 CVAT 中以 `Ultralytics YOLO Pose 1.0` 导出标注 ZIP，然后执行：
 
@@ -107,7 +130,7 @@ python tools/import_yolo_pose.py <CVAT导出.zip> `
 - 可选 `track_id`；
 - 原视频路径、帧率、场景和哈希元数据。
 
-## 8. 金标准校验
+## 9. 金标准校验
 
 普通人工检测标注：
 
@@ -136,7 +159,7 @@ python tools/validate_annotations.py <统一JSON目录> --pose-gold --require-tr
 
 只有通过相应校验的文件才能进入正式评测集。
 
-## 9. 训练前检查与正式训练
+## 10. 训练前检查与正式训练
 
 回导并按原始视频划分 train、val、test 后，重新导出正式数据集：
 
