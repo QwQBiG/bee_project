@@ -28,8 +28,6 @@ output/
 runtime_results/
 runtime_environment.json
 .runtime-bootstrap.lock
-app/uploads/
-app/task_store.json
 
 # Web 界面运行时数据（上传视频、标注视频、任务记录，勿提交）
 app/uploads/
