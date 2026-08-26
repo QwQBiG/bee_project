@@ -352,7 +352,7 @@ video { width: 100%; max-height: 480px; display: block; }
 canvas#densityMap {
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #1a1510;
+  background: #f7f3ea;
 }
 
 /* ---------- 双栏（多模态） ---------- */
@@ -395,86 +395,92 @@ canvas#densityMap {
   .container { padding: 16px 12px 40px; }
 }
 
-/* ---------- 可折叠卡片 ---------- */
-.fold-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  margin-bottom: 16px;
-  overflow: hidden;
+
+
+/* ---------- 结果页：板块直接展开 ---------- */
+.result-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
 }
-.fold-card .fold-head {
+.result-section { margin-bottom: 0; }
+
+.result-section .m-values { font-size: 14px; }
+.result-section .m-values .kv {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 7px 0;
+  border-bottom: 1px dashed #f0e9dc;
+}
+.result-section .m-values .kv:last-child { border-bottom: none; }
+.result-section .m-values .kv span:first-child { color: var(--text-muted); }
+.result-section .m-values .kv span:last-child { font-weight: 600; }
+
+.kv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  column-gap: 36px;
+}
+.kv-grid .kv { border-bottom: none; }
+
+/* 多通道分隔标题 */
+.channel-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 22px;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.15s;
-}
-.fold-card .fold-head:hover { background: #faf8f4; }
-.fold-card .fold-head .fold-title {
+  gap: 12px;
+  margin: 4px 0;
   font-size: 15px;
   font-weight: 700;
   color: var(--brown);
+}
+.channel-header h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brown);
+  margin: 0;
+  flex-shrink: 0;
+}
+.channel-header::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ---------- 报告触发卡片（弹窗） ---------- */
+.report-trigger {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-.fold-card .fold-head .fold-title::before {
-  content: "";
-  width: 5px; height: 18px;
-  background: var(--primary);
-  border-radius: 3px;
-}
-.fold-card .fold-head .fold-arrow {
-  font-size: 12px;
-  color: var(--text-muted);
-  transition: transform 0.25s;
-}
-.fold-card.open .fold-head .fold-arrow { transform: rotate(180deg); }
-.fold-card .fold-head .fold-summary {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-left: auto;
-  margin-right: 12px;
-  max-width: 360px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.fold-card .fold-body {
-  display: none;
-  padding: 0 22px 20px;
-}
-.fold-card.open .fold-body { display: block; }
-
-/* ---------- 详情卡片网格 ---------- */
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 14px;
-  margin-top: 20px;
-}
-.detail-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
+  gap: 16px;
+  background: linear-gradient(135deg, var(--primary-soft), #fff8ec);
+  border: 1px solid var(--primary);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 20px;
+  padding: 18px 22px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
-.detail-card:hover {
-  border-color: var(--primary);
-  box-shadow: 0 4px 16px rgba(74, 59, 42, 0.12);
+.report-trigger:hover {
+  border-color: var(--primary-dark);
+  box-shadow: 0 4px 16px rgba(201, 134, 42, 0.18);
   transform: translateY(-1px);
 }
-.detail-card .detail-card-icon { font-size: 28px; margin-bottom: 8px; }
-.detail-card .detail-card-title { font-size: 15px; font-weight: 700; color: var(--brown); margin-bottom: 6px; }
-.detail-card .detail-card-preview { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
-.detail-card .detail-card-arrow { font-size: 12px; color: var(--primary-dark); margin-top: 10px; font-weight: 600; }
+.report-trigger .report-trigger-icon { font-size: 30px; }
+.report-trigger .report-trigger-info { flex: 1; }
+.report-trigger .report-trigger-title { font-size: 16px; font-weight: 700; color: var(--brown); }
+.report-trigger .report-trigger-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.report-trigger .report-trigger-action {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  background: #fff;
+  border: 1px solid var(--primary);
+  border-radius: 20px;
+  padding: 6px 14px;
+  white-space: nowrap;
+}
 
 /* ---------- 模态框 ---------- */
 .modal-overlay {

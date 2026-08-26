@@ -1,6 +1,6 @@
 /* ============================================================
    结果页逻辑：加载任务 → 按模式渲染
-   布局：关键指标总览 + 模块预览卡片 + 点击弹出详情模态框
+   布局：关键指标总览 + 各板块直接展开 + 详细报告弹窗
    ============================================================ */
 
 const app = document.getElementById('app');
@@ -31,21 +31,37 @@ const STATUS_PILL = {
   unknown: '<span class="status-pill unknown">未知</span>',
 };
 
-// ---------- 可折叠卡片组件 ----------
-function foldCard(title, summary, body, open = false) {
+// ---------- 板块组件 ----------
+// 数据板块：直接展开在页面中
+function sectionCard(icon, title, body) {
   return `
-    <div class="fold-card${open ? ' open' : ''}" onclick="this.classList.toggle('open')">
-      <div class="fold-head">
-        <span class="fold-title">${title}</span>
-        ${summary ? `<span class="fold-summary">${summary}</span>` : ''}
-        <span class="fold-arrow">▼</span>
+    <section class="card result-section">
+      <h2>${icon} ${title}</h2>
+      ${body}
+    </section>`;
+}
+
+// 详细分析报告：保持弹窗展示
+function reportCard(iframeSrc, key = 'report') {
+  const modalKey = `${key}_report`;
+  _modalContent[modalKey] = {
+    title: '📄 详细分析报告',
+    body: `<iframe class="report-frame" src="${iframeSrc}"></iframe>`,
+  };
+  return `
+    <div class="report-trigger" data-modal="${modalKey}">
+      <div class="report-trigger-icon">📄</div>
+      <div class="report-trigger-info">
+        <div class="report-trigger-title">详细分析报告</div>
+        <div class="report-trigger-desc">点击查看完整分析报告</div>
       </div>
-      <div class="fold-body">${body}</div>
+      <span class="report-trigger-action">查看报告 →</span>
     </div>`;
 }
 
 // ---------- 全局模态框 ----------
 let _modalContent = {};
+let _densityGrid = null; // 待绘制的密度网格（高密度聚集热力图）
 function showModal(id) {
   const data = _modalContent[id];
   if (!data) return;
@@ -61,6 +77,14 @@ function closeModal() {
   document.body.style.overflow = '';
 }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+// 事件委托：点击报告卡片打开模态框
+app.addEventListener('click', (e) => {
+  const card = e.target.closest('.report-trigger');
+  if (card) {
+    const id = card.getAttribute('data-modal');
+    if (id) showModal(id);
+  }
+});
 
 // ---------- 任务选择列表 ----------
 async function renderTaskSelector() {
@@ -161,6 +185,7 @@ function renderProgress(task) {
 // ---------- 结果渲染 ----------
 function renderResult(task) {
   _modalContent = {};
+  _densityGrid = null;
   const r = task.result;
   let body = '';
 
@@ -178,7 +203,7 @@ function renderResult(task) {
       <p>任务 #${task.id} · 创建于 ${task.created_at} · 完成于 ${task.finished_at || ''}</p>
     </div>
     ${renderOverview(r)}
-    <div class="detail-grid">${body}</div>
+    <div class="result-sections">${body}</div>
     ${renderDownloads(task.id, r)}
     <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
       <div class="modal-panel">
@@ -190,6 +215,10 @@ function renderResult(task) {
       </div>
     </div>
   `;
+
+  // 渲染完成后绘制密度热力图
+  const dm = document.getElementById('densityMap');
+  if (dm) drawDensityMap(dm, _densityGrid);
 }
 
 // ---------- 健康总览（始终展开） ----------
@@ -253,18 +282,6 @@ function renderAlert(a) {
   return `<div class="alert-item ${a.level}"><b>[${map[a.level] || a.level}]</b> ${esc(a.text)}</div>`;
 }
 
-// ---------- 详情卡片（预览 + 点击弹出模态框） ----------
-function detailCard(id, icon, title, preview, body) {
-  _modalContent[id] = { title: `${icon} ${title}`, body };
-  return `
-    <div class="detail-card" onclick="showModal('${id}')">
-      <div class="detail-card-icon">${icon}</div>
-      <div class="detail-card-title">${title}</div>
-      <div class="detail-card-preview">${preview}</div>
-      <div class="detail-card-arrow">查看详情 →</div>
-    </div>`;
-}
-
 // ---------- 巢外 ----------
 function renderOutside(r) {
   const s = r.summary || {};
@@ -276,48 +293,35 @@ function renderOutside(r) {
   let html = '';
 
   if (r.annotated_video) {
-    html += detailCard('video', '🎬', '标注视频',
-      '查看分析标注视频',
-      `<video class="annotated-video" src="${r.annotated_video}" controls preload="metadata" style="width:100%;max-height:480px;border-radius:8px;background:#000"></video>`);
+    html += sectionCard('🎬', '标注视频',
+      `<video class="annotated-video" src="${r.annotated_video}" controls preload="metadata"></video>`);
   }
 
-  html += detailCard('track', '📊', '轨迹质量评估',
-    `平均轨迹长度 ${num(q.continuity && q.continuity.mean_track_length, 0)} 帧`,
-    renderTrackQuality(q));
+  html += sectionCard('📊', '轨迹质量评估', renderTrackQuality(q));
 
-  html += detailCard('pollen', '🌼', '花粉采集评估',
-    `携粉进巢 ${pollenRatio}% · 携粉个体 ${pollenCount}`,
-    `<div class="m-values">
+  html += sectionCard('🌼', '花粉采集评估', `
+    <div class="m-values kv-grid">
       <div class="kv"><span>携粉进巢占比</span><span>${pollenRatio}%</span></div>
       <div class="kv"><span>携粉个体数</span><span>${pollenCount}</span></div>
     </div>
-    <div style="margin-top:10px;font-size:13px;color:var(--text-muted)">${esc(p.assessment || '')}</div>`);
+    <div style="margin-top:12px;font-size:13px;color:var(--text-muted)">${esc(p.assessment || '')}</div>`);
 
-  const behaviorPreview = [
-    ['进巢', b.entering], ['出巢', b.exiting], ['采粉', b.foraging],
-    ['停歇', b.resting], ['徘徊', b.wandering], ['移动', b.moving],
-  ].map(([k, v]) => `<span style="margin:0 6px"><b>${k}</b> ${v ?? '-'}</span>`).join('');
+  html += sectionCard('🐝', '巢口行为分布', `
+    <div class="m-values kv-grid">
+      ${[['进巢', b.entering], ['出巢', b.exiting], ['采粉', b.foraging],
+        ['停歇', b.resting], ['徘徊', b.wandering], ['移动', b.moving]]
+        .map(([k, v]) => `<div class="kv"><span>${k}</span><span>${v === undefined ? '-' : v}</span></div>`).join('')}
+    </div>`);
 
-  html += detailCard('behavior', '🐝', '巢口行为分布', behaviorPreview,
-    `<div class="m-values">${[
-      ['进巢', b.entering], ['出巢', b.exiting], ['采粉', b.foraging],
-      ['停歇', b.resting], ['徘徊', b.wandering], ['移动', b.moving],
-    ].map(([k, v]) => `<div class="kv"><span>${k}</span><span>${v === undefined ? '-' : v}</span></div>`).join('')}</div>`);
-
-  html += detailCard('info', 'ℹ️', '视频与处理信息',
-    `${s.total_frames ?? '-'} 帧 · ${num(s.fps)} fps · ${num(s.processing_time_s)}s`,
-    `<div class="m-values" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:4px 20px">
+  html += sectionCard('ℹ️', '视频与处理信息', `
+    <div class="m-values kv-grid">
       <div class="kv"><span>总帧数</span><span>${s.total_frames ?? '-'}</span></div>
       <div class="kv"><span>帧率</span><span>${num(s.fps)} fps</span></div>
       <div class="kv"><span>总轨迹数</span><span>${s.total_tracks ?? '-'}</span></div>
       <div class="kv"><span>处理耗时</span><span>${num(s.processing_time_s)} s</span></div>
     </div>`);
 
-  if (r.report_html) {
-    html += detailCard('report', '📄', '详细分析报告',
-      '点击查看完整分析报告',
-      `<iframe class="report-frame" src="${r.report_html}"></iframe>`);
-  }
+  if (r.report_html) html += reportCard(r.report_html, 'outside');
 
   return html;
 }
@@ -353,19 +357,17 @@ function renderInside(r) {
   let html = '';
 
   if (r.annotated_video) {
-    html += detailCard('video', '🎬', '标注视频',
-      '查看分析标注视频',
-      `<video class="annotated-video" src="${r.annotated_video}" controls preload="metadata" style="width:100%;max-height:480px;border-radius:8px;background:#000"></video>`);
+    html += sectionCard('🎬', '标注视频',
+      `<video class="annotated-video" src="${r.annotated_video}" controls preload="metadata"></video>`);
   }
 
-  html += detailCard('metrics', '📋', '个体姿态与行为指标',
-    `${metrics.length} 项指标`,
+  html += sectionCard('📋', '个体姿态与行为指标',
     `<div class="metric-grid">${metrics.map(renderMetric).join('')}</div>`);
 
   if (grid.grid) {
-    html += detailCard('heatmap', '🔥', '高密度聚集热力图',
-      `峰值网格占比 ${num(grid.peak_cell_share * 100, 1)}%`,
-      `<div class="heatmap-wrap">
+    _densityGrid = grid.grid;
+    html += sectionCard('🔥', '高密度聚集热力图', `
+      <div class="heatmap-wrap">
         <canvas id="densityMap" width="360" height="360"></canvas>
         <div class="m-values" style="flex:1;min-width:220px">
           <div class="kv"><span>峰值网格占比</span><span>${num(grid.peak_cell_share * 100, 1)}%</span></div>
@@ -376,27 +378,73 @@ function renderInside(r) {
   }
 
   if (stationaryCount) {
-    html += detailCard('stationary', '⚠️', '静止候选',
-      `${stationaryCount} 个候选个体`,
-      renderStationary(metrics));
+    html += sectionCard('⚠️', '静止候选', renderStationary(metrics));
   }
 
-  html += detailCard('info', 'ℹ️', '视频与处理信息',
-    `${s.total_frames ?? '-'} 帧 · ${num(s.fps)} fps · ${num(s.processing_time_s)}s`,
-    `<div class="m-values" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:4px 20px">
+  html += sectionCard('ℹ️', '视频与处理信息', `
+    <div class="m-values kv-grid">
       <div class="kv"><span>总帧数</span><span>${s.total_frames ?? '-'}</span></div>
       <div class="kv"><span>帧率</span><span>${num(s.fps)} fps</span></div>
       <div class="kv"><span>总轨迹数</span><span>${s.total_tracks ?? '-'}</span></div>
       <div class="kv"><span>处理耗时</span><span>${num(s.processing_time_s)} s</span></div>
     </div>`);
 
-  if (r.report_html) {
-    html += detailCard('report', '📄', '详细分析报告',
-      '点击查看完整分析报告',
-      `<iframe class="report-frame" src="${r.report_html}"></iframe>`);
-  }
+  if (r.report_html) html += reportCard(r.report_html, 'inside');
 
   return html;
+}
+
+// ---------- 高密度聚集热力图绘制 ----------
+// JET 风格色标（蓝→青→绿→黄→红）
+function jetColor(t) {
+  const n = Math.max(0, Math.min(1, t)) * 7;
+  const x = n % 1;
+  let r = 0, g = 0, b = 0;
+  if (n < 1) { b = 128 + x * 127; }
+  else if (n < 2) { b = 255; }
+  else if (n < 3) { g = x * 255; b = 255; }
+  else if (n < 4) { g = 255; b = (1 - x) * 255; }
+  else if (n < 5) { r = x * 255; g = 255; }
+  else if (n < 6) { r = 255; g = (1 - x) * 255; }
+  else { r = 255; }
+  return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+}
+
+// 绘制密度热力图：1px 离屏画布放大插值，得到平滑渐变
+function drawDensityMap(canvas, grid) {
+  if (!canvas || !grid || !grid.length) return;
+  const rows = grid.length;
+  const cols = grid[0].length;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+
+  // 归一化最大值（除零保护）
+  let max = 0;
+  for (const row of grid) for (const v of row) if (v > max) max = v;
+  const maxV = max || 1;
+
+  // 离屏 1px/格 画布
+  const off = document.createElement('canvas');
+  off.width = cols;
+  off.height = rows;
+  const octx = off.getContext('2d');
+  octx.clearRect(0, 0, cols, rows);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const v = grid[r][c] / maxV;
+      if (v <= 0.01) continue;
+      octx.fillStyle = jetColor(v);
+      octx.fillRect(c, r, 1, 1);
+    }
+  }
+
+  // 放大绘制到目标画布，双线性插值平滑
+  ctx.fillStyle = '#f7f3ea';
+  ctx.fillRect(0, 0, w, h);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(off, 0, 0, w, h);
 }
 
 function renderMetric(m) {
@@ -458,13 +506,11 @@ function renderMulti(r) {
   const outsidePart = { ...r.outside, alerts: [], anomalies: [] };
   const insidePart = { ...r.inside, alerts: [], anomalies: [] };
   return `
-    <div style="grid-column:1/-1;margin-bottom:8px"><h2 style="font-size:16px;color:var(--brown)">巢外通道</h2></div>
+    <div class="channel-header"><h2>巢外通道</h2></div>
     ${renderOutside(outsidePart)}
-    <div style="grid-column:1/-1;margin:12px 0 8px"><h2 style="font-size:16px;color:var(--brown)">巢内通道</h2></div>
+    <div class="channel-header"><h2>巢内通道</h2></div>
     ${renderInside(insidePart)}
-    ${r.report_html ? detailCard('report', '📄', '详细分析报告',
-      '点击查看完整分析报告',
-      `<iframe class="report-frame" src="${r.report_html}"></iframe>`) : ''}
+    ${r.report_html ? reportCard(r.report_html, 'multi') : ''}
   `;
 }
 

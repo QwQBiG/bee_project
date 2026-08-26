@@ -31,6 +31,11 @@ runtime_environment.json
 app/uploads/
 app/task_store.json
 
+# Web 界面运行时数据（上传视频、标注视频、任务记录，勿提交）
+app/uploads/
+app/task_store.json
+app/task_store.tmp
+
 # 临时文件
 tmp/
 temp/

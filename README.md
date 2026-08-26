@@ -37,13 +37,14 @@ docker compose up --build
 
 默认使用 CPU。如果服务器已经正确安装 NVIDIA Container Toolkit，可在部署时按服务器环境调整 `compose.yaml`，并把 `BEE_DEVICE` 改为 `cuda:0`。
 
-## 手动启动
+## 手动启动（Web 界面）
 
 ```bash
-python tools/bootstrap_runtime.py
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+python -m pip install -r requirements.txt
+python app/run.py
 ```
 
+启动后自动打开浏览器访问 `http://127.0.0.1:8000`（本质是 `uvicorn app.main:app --reload`）。
 Linux/macOS 也可以运行：
 
 ```bash
