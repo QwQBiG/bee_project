@@ -20,7 +20,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 STATUS_PATH = PROJECT_ROOT / "runtime_environment.json"
 LOCK_PATH = PROJECT_ROOT / ".runtime-bootstrap.lock"
-REQUIREMENTS_PATH = PROJECT_ROOT / "requirements-web.txt"
+REQUIREMENTS_PATH = PROJECT_ROOT / "requirements.txt"
 PYTORCH_INDEX = "https://download.pytorch.org/whl/{backend}"
 SUPPORTED_PYTHON_MIN = (3, 10)
 SUPPORTED_PYTHON_MAX = (3, 14)
@@ -324,7 +324,7 @@ def main() -> None:
             return
 
         backend, torch_info = install_torch(nvidia, args.force_torch)
-        if not run_pip(["install", "-r", str(REQUIREMENTS_PATH)]):
+        if not run_pip(["install", "--quiet", "-r", str(REQUIREMENTS_PATH)]):
             raise RuntimeError("Application dependency installation failed.")
         status = write_status(backend, torch_info, nvidia)
         print(
