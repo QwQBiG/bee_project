@@ -1,0 +1,271 @@
+[
+ {
+  "id": "0e3c959009ab",
+  "mode": "multi",
+  "files": [
+   {
+    "name": "outside.mp4",
+    "path": "/Users/lilanxin/PycharmProjects/bee_project/app/uploads/9a518693_outside.mp4",
+    "size": 404781
+   },
+   {
+    "name": "inside.mp4",
+    "path": "/Users/lilanxin/PycharmProjects/bee_project/app/uploads/e6e1092e_inside.mp4",
+    "size": 2012763
+   }
+  ],
+  "status": "done",
+  "progress": 100,
+  "message": "分析完成",
+  "created_at": "2026-08-26 17:31:07",
+  "finished_at": "2026-08-26 17:33:31",
+  "result": {
+   "mode": "multi",
+   "mode_label": "双路同步分析",
+   "status": "done",
+   "summary": {
+    "total_frames": 62,
+    "fps": 30.0,
+    "total_tracks": 1371,
+    "processing_time_s": 139.2
+   },
+   "outside": {
+    "mode": "outside",
+    "mode_label": "巢外视频分析",
+    "status": "done",
+    "summary": {
+     "total_frames": 62,
+     "fps": 30.0,
+     "total_tracks": 32,
+     "processing_time_s": 2.9,
+     "behavior": {
+      "entering": 0,
+      "exiting": 0,
+      "foraging": 1,
+      "resting": 0,
+      "wandering": 272,
+      "moving": 14
+     }
+    },
+    "track_quality": {
+     "implemented": false,
+     "note": "轨迹质量模块尚未开发，以下为演示数据",
+     "continuity": {
+      "mean_track_length": 312.4,
+      "mean_track_lifetime_s": 10.4,
+      "track_break_rate": 0.06
+     },
+     "stability": {
+      "mean_speed_std": 1.32,
+      "direction_change_rate": 0.18,
+      "missing_frame_ratio": 0.04
+     }
+    },
+    "pollen_analysis": {
+     "status": "unknown",
+     "incoming_with_pollen_ratio": 0.5,
+     "pollen_carrying_tracks": 1,
+     "assessment": "进巢样本不足，不能据此做营养判断。"
+    },
+    "anomalies": [
+     {
+      "type": "low_activity",
+      "frame": null,
+      "detail": "检测到异常低的蜂群活动强度，可能存在健康问题",
+      "severity": "critical"
+     }
+    ],
+    "report_html": "/uploads/0e3c959009ab_outside_report.html",
+    "annotated_video": "/uploads/0e3c959009ab_outside.mp4"
+   },
+   "inside": {
+    "mode": "inside",
+    "mode_label": "巢内视频分析",
+    "status": "done",
+    "summary": {
+     "total_frames": 100,
+     "fps": 10.0,
+     "total_tracks": 1339,
+     "processing_time_s": 136.3
+    },
+    "metrics": [
+     {
+      "name": "个体朝向与特定运动轨迹",
+      "status": "unknown",
+      "description": "Pose model disabled; head-tail direction is unknown.",
+      "values": {
+       "mean_orientation_degrees": null,
+       "motion_alignment": null
+      }
+     },
+     {
+      "name": "个体异常姿态",
+      "status": "candidate_only",
+      "description": "Bounding-box shape candidate only; not a head-tail or disease conclusion.",
+      "values": {
+       "candidate_ratio": 0.332,
+       "median_body_aspect_ratio": 0.777
+      }
+     },
+     {
+      "name": "群体运动速度与活跃度",
+      "status": "normal",
+      "description": "统计每帧确认轨迹数量和平均运动速度，用于评估蜂群活跃度。",
+      "values": {
+       "mean_active_tracks": 179.03,
+       "mean_speed": 5.012,
+       "trend": "up"
+      }
+     },
+     {
+      "name": "局部空间异常高密度聚集",
+      "status": "normal",
+      "description": "将画面划分网格，寻找长期占比最高的蜂群活动区域。",
+      "values": {
+       "peak_cell_share": 0.029,
+       "peak_grid_cell": [
+        0,
+        0
+       ],
+       "grid": [
+        [
+         0.0292,
+         0.0074,
+         0.0056,
+         0.0147,
+         0.0105,
+         0.0119,
+         0.0112,
+         0.0171,
+         0.0105,
+         0.0156
+        ],
+        [
+         0.0071,
+         0.0127,
+         0.0063,
+         0.0082,
+         0.0081,
+         0.0119,
+         0.014,
+         0.0178,
+         0.0092,
+         0.0062
+        ],
+        [
+         0.0142,
+         0.0117,
+         0.0119,
+         0.0117,
+         0.0084,
+         0.0105,
+         0.0131,
+         0.0083,
+         0.0126,
+         0.0138
+        ],
+        [
+         0.0111,
+         0.0026,
+         0.0059,
+         0.0135,
+         0.013,
+         0.0066,
+         0.0104,
+         0.0094,
+         0.0076,
+         0.01
+        ],
+        [
+         0.0064,
+         0.0052,
+         0.0102,
+         0.0187,
+         0.0101,
+         0.0106,
+         0.0103,
+         0.0073,
+         0.0078,
+         0.015
+        ],
+        [
+         0.0154,
+         0.0137,
+         0.0118,
+         0.0112,
+         0.0085,
+         0.0123,
+         0.0052,
+         0.0132,
+         0.0123,
+         0.011
+        ],
+        [
+         0.0093,
+         0.01,
+         0.015,
+         0.007,
+         0.0089,
+         0.0097,
+         0.009,
+         0.0085,
+         0.0159,
+         0.0127
+        ],
+        [
+         0.0141,
+         0.0074,
+         0.0072,
+         0.0118,
+         0.0124,
+         0.0078,
+         0.0049,
+         0.0095,
+         0.0146,
+         0.0042
+        ],
+        [
+         0.0001,
+         0.0074,
+         0.0104,
+         0.0046,
+         0.0104,
+         0.004,
+         0.0073,
+         0.0126,
+         0.0106,
+         0.0063
+        ],
+        [
+         0.0,
+         0.0055,
+         0.0033,
+         0.0109,
+         0.0091,
+         0.003,
+         0.0033,
+         0.0085,
+         0.0027,
+         0.0123
+        ]
+       ]
+      }
+     },
+     {
+      "name": "个体静止时间与掉落轨迹",
+      "status": "normal",
+      "description": "筛选持续低速或静止的轨迹，作为掉落、死亡或受困的待复核对象。",
+      "values": {
+       "candidate_tracks": [],
+       "threshold_frames": 30
+      }
+     }
+    ],
+    "alerts": [],
+    "report_html": "/uploads/0e3c959009ab_inside_report.html",
+    "annotated_video": "/uploads/0e3c959009ab_inside.mp4"
+   }
+  },
+  "error": null
+ }
+]

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能蜂场可视化分析平台</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="hex"></span>
+      智能蜂场可视化分析平台
+      <small>巢内姿态建模 · 巢外轨迹跟踪 · 健康评估</small>
+    </div>
+    <a href="/">首页</a>
+  </header>
+
+  <main class="container">
+
+    <div class="page-header">
+      <h1>视频上传与分析</h1>
+      <p>上传蜂群视频，获取行为量化指标、异常识别与健康评估报告。</p>
+    </div>
+
+    <!-- 模式选择 -->
+    <section class="card">
+      <h2>选择分析模式</h2>
+      <div class="mode-grid" id="modeGrid">
+        <div class="mode-option active" data-mode="outside">
+          <div class="icon">&#127807;</div>
+          <div class="name">巢外视频</div>
+          <div class="desc">轨迹连续性 / 稳定性 · 进出巢 · 花粉采集</div>
+        </div>
+        <div class="mode-option" data-mode="inside">
+          <div class="icon">&#127968;</div>
+          <div class="name">巢内视频</div>
+          <div class="desc">个体姿态建模 · 活跃度 · 密度聚集 · 静止检测</div>
+        </div>
+        <div class="mode-option" data-mode="multi">
+          <div class="icon">&#8693;</div>
+          <div class="name">双路同步</div>
+          <div class="desc">巢外 + 巢内同时上传，双栏对比分析</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 上传区 -->
+    <section class="card">
+      <h2>上传视频</h2>
+      <div class="upload-grid single" id="uploadGrid">
+        <div class="dropzone" id="dz0">
+          <div class="dz-label">拖拽视频到此处，或<b>点击选择文件</b></div>
+          <div class="dz-hint">支持 mp4 / avi / mov，单文件不超过 500MB</div>
+          <input type="file" accept="video/*,.mp4,.avi,.mov">
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-primary" id="btnAnalyze">开始分析</button>
+        <button class="btn btn-outline" id="btnClear">清空</button>
+      </div>
+    </section>
+
+    <!-- 任务列表 -->
+    <section class="card">
+      <h2>分析任务</h2>
+      <div id="taskList">
+        <div class="empty-tip">暂无任务</div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/static/js/index.js"></script>
+</body>
+</html>

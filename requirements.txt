@@ -54,3 +54,8 @@ ipython>=8.0.0
 
 # 调试工具
 pytest>=7.0.0
+
+# Web 可视化分析平台（app/ 目录）
+fastapi>=0.110.0
+uvicorn>=0.29.0
+python-multipart>=0.0.9
