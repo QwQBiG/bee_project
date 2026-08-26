@@ -97,9 +97,10 @@ class OutsideHiveProcessor:
         
         return annotated, tracks, detections, stats
     
-    def process_video(self, video_path: str, 
+    def process_video(self, video_path: str,
                      output_path: str = None,
-                     show_video: bool = False) -> Dict:
+                     show_video: bool = False,
+                     progress_callback=None) -> Dict:
         """处理视频文件
         
         Args:
@@ -122,6 +123,8 @@ class OutsideHiveProcessor:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         if fps > 0:
             self.trajectory_metrics.set_video_fps(fps)
+        if progress_callback:
+            progress_callback(0, total_frames)
         
         print(f"Video info: {width}x{height}, {fps}fps, {total_frames} frames")
         
@@ -159,6 +162,10 @@ class OutsideHiveProcessor:
             self.stats['total_tracks'] = len(self._seen_track_ids)
             
             frame_idx += 1
+
+            if progress_callback and (
+                    frame_idx == total_frames or frame_idx % max(total_frames // 100, 1) == 0):
+                progress_callback(frame_idx, total_frames)
             
             if frame_idx % 100 == 0:
                 elapsed = time.time() - start_time
@@ -188,6 +195,8 @@ class OutsideHiveProcessor:
         self.stats['pollen_analysis'] = self.pollen_analyzer.build_report()
         self.stats['trajectory_analysis'] = self.trajectory_metrics.build_report()
         self.stats['processing_time'] = time.time() - start_time
+        if progress_callback:
+            progress_callback(frame_idx, total_frames)
         
         return self.stats
 
@@ -261,7 +270,8 @@ class InsideHiveProcessor:
     
     def process_video(self, video_path: str,
                      output_path: str = None,
-                     show_video: bool = False) -> Dict:
+                     show_video: bool = False,
+                     progress_callback=None) -> Dict:
         """处理视频文件"""
         cap = cv2.VideoCapture(video_path)
         
@@ -274,6 +284,8 @@ class InsideHiveProcessor:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         if fps > 0:
             self.trajectory_metrics.set_video_fps(fps)
+        if progress_callback:
+            progress_callback(0, total_frames)
         
         print(f"Video info: {width}x{height}, {fps}fps, {total_frames} frames")
         
@@ -308,6 +320,10 @@ class InsideHiveProcessor:
                 self.stats['pose_distribution'].append(pose_distribution)
             
             frame_idx += 1
+
+            if progress_callback and (
+                    frame_idx == total_frames or frame_idx % max(total_frames // 100, 1) == 0):
+                progress_callback(frame_idx, total_frames)
             
             if frame_idx % 100 == 0:
                 print(f"Processed {frame_idx}/{total_frames} frames")
@@ -341,6 +357,8 @@ class InsideHiveProcessor:
         self.stats['pose_model'] = self.keypoint_pose.build_report()
         self.stats['trajectory_analysis'] = self.trajectory_metrics.build_report()
         self.stats['processing_time'] = time.time() - start_time
+        if progress_callback:
+            progress_callback(frame_idx, total_frames)
         
         return self.stats
 

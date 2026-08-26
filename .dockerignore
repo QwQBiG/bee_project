@@ -1,0 +1,11 @@
+.git
+.vscode
+.venv
+__pycache__
+*.pyc
+data
+output
+runtime_results
+reports
+tests
+doc

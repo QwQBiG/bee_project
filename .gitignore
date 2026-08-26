@@ -25,6 +25,7 @@ ENV/
 
 # 输出结果
 output/
+runtime_results/
 
 # 临时文件
 tmp/

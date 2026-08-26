@@ -1,63 +1,77 @@
-# 智慧养蜂蜜蜂识别与行为量化研究项目配置
+# 蜂群视频智能分析
 
-## 项目概述
-本项目针对智慧养蜂场景，实现巢内外蜜蜂个体识别与行为智能量化分析。
+这是一个面向养蜂与蜂群行为研究的本地视频分析工具。现在既保留了命令行能力，也提供了普通用户可以直接使用的中文网页：
 
-## 目录结构
-```
-bee_project/
-├── configs/         # 配置文件
-├── data/            # 数据集目录
-├── models/          # 模型定义（五角星）
-├── utils/           # 工具函数
-├── annotation/      # 数据标注模块
-├── tracking/        # 跟踪算法模块（五角星）
-├── behavior/        # 行为分析模块 （五角星）
-├── visualization/   # 可视化模块 （五角星）
-├── inference/       # 推理模块（五角星）
-├── datasets/        # 数据集处理
-└── main.py          # 主程序入口
+1. 选择“巢内视频”或“巢外视频”
+2. 从电脑中选择并上传视频
+3. 等待分析完成
+4. 在线查看标注视频，并下载 HTML 报告、JSON 数据或完整结果包
+
+## 最简单的启动方式（Windows）
+
+双击项目根目录下的 `start_web.bat`。第一次启动会自动创建 Python 环境并安装依赖，耗时会稍长。浏览器会打开：
+
+```text
+http://127.0.0.1:8000
 ```
 
-## 技术方案
+停止服务时，回到黑色命令窗口按 `Ctrl+C`。
 
-### 1. 巢外蜜蜂检测与跟踪（可见光视频）
-- **检测模型**: 蜜蜂专用 YOLOv8
-- **跟踪算法**: Ultralytics 官方 BoT-SORT / ByteTrack
-- **关键技术**: 
-  - 高密度场景下的目标检测
-  - 长时间轨迹连续性维护
-  - 身份切换抑制
+## Docker 部署
 
-### 2. 巢内蜜蜂识别与跟踪（红外视频）
-- **图像增强**: 自适应直方图均衡化 + 去噪
-- **检测模型**: YOLOv8 + 红外图像专用头
-- **跟踪算法**: Ultralytics 官方 BoT-SORT / ByteTrack + 几何方向估计
-- **关键技术**:
-  - 低对比度图像增强
-  - 蜜蜂头部/腹部结构识别
-  - 个体朝向判别
+已安装 Docker Desktop 的电脑或服务器可以直接运行：
 
-### 3. 行为量化指标
-- **个体行为**: 进出巢频率、停留时间、运动速度、方向变化
-- **群体行为**: 蜂群活跃度、采集高峰期、异常聚集检测
-
-## 依赖环境
-```
-torch >= 2.0.0
-opencv-python >= 4.8.0
-ultralytics >= 8.0.0
-numpy >= 1.24.0
-pandas >= 2.0.0
-pillow >= 10.0.0
-pyyaml >= 6.0
-scikit-learn >= 1.3.0
-matplotlib >= 3.7.0
-seaborn >= 0.12.0
+```bash
+docker compose up --build
 ```
 
-## 数据标注格式
-采用COCO格式和MOT格式结合：
-- 检测框: [x, y, w, h, confidence, class_id]
-- 跟踪ID: [frame_id, track_id, x, y, w, h, confidence, class_id, visible]
-- 行为标注: [track_id, behavior_type, start_frame, end_frame]
+然后访问 `http://服务器地址:8000`。分析结果保存在 Docker 数据卷 `bee-results` 中，容器重建后仍会保留。
+
+默认使用 CPU。如果服务器已经正确安装 NVIDIA Container Toolkit，可在部署时按服务器环境调整 `compose.yaml`，并把 `BEE_DEVICE` 改为 `cuda:0`。
+
+## 手动启动
+
+```bash
+python -m pip install -r requirements-web.txt
+python -m uvicorn web_app:app --host 0.0.0.0 --port 8000
+```
+
+Linux/macOS 也可以运行：
+
+```bash
+chmod +x start_web.sh
+./start_web.sh
+```
+
+## 网页输出
+
+- 巢外：标注视频、进出事件、采粉分析报告、轨迹与行为统计
+- 巢内：标注视频、密度/活动/聚集分析报告、轨迹与行为统计
+- 所有任务：完整 JSON 和 ZIP 结果包
+
+运行产生的文件默认位于 `runtime_results/`。每次上传使用独立任务目录，默认同时只运行一个推理任务，避免争抢显卡或内存。
+
+可通过环境变量调整：
+
+- `BEE_DEVICE`：推理设备，例如 `cpu`、`cuda:0`
+- `BEE_MAX_UPLOAD_MB`：单个上传视频的最大 MB 数，默认 `4096`
+- `BEE_RUNTIME_DIR`：结果保存目录
+- `BEE_WORKERS`：并行分析任务数，默认 `1`
+
+## 原命令行用法
+
+```bash
+# 巢外视频
+python main.py --mode outside --video data/outside.mp4 --output output/outside
+
+# 巢内视频
+python main.py --mode inside --video data/inside.mp4 --output output/inside
+```
+
+默认配置位于 `configs/config.yaml`，模型文件位于 `artifacts/models/`。CPU 可以运行，但长视频会比较慢；正式部署更建议使用具备 CUDA 能力的 NVIDIA GPU。
+
+## 测试
+
+```bash
+python -m pytest -q
+```
