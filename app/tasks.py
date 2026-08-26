@@ -23,6 +23,7 @@ from visualization.outside_pollen_report import create_outside_pollen_report
 
 from .adapters import adapt_inside, adapt_multi, adapt_outside
 from .engine import get_processors, reset_processor
+from .media import make_browser_preview
 
 logger = logging.getLogger("app.tasks")
 
@@ -47,6 +48,8 @@ class TaskManager:
         self._tasks: dict[str, dict] = {}
         self._lock = threading.Lock()
         self._io_lock = threading.Lock()
+        # 两个任务不得同时重置并使用同一组模型/GPU。
+        self._inference_lock = threading.Lock()
         self._last_write: dict[str, float] = {}
         self.load()
 
@@ -163,17 +166,18 @@ class TaskManager:
             if not files:
                 raise ValueError("未收到有效视频文件")
 
-            processors = get_processors()
-            self._update(task_id, status=RUNNING, progress=1, message="引擎初始化…")
+            with self._inference_lock:
+                processors = get_processors()
+                self._update(task_id, status=RUNNING, progress=1, message="引擎初始化…")
 
-            if mode == "multi":
-                if len(files) < 2:
-                    raise ValueError("双路同步分析需要巢外与巢内两个视频")
-                outside_result = self._run_one(task_id, "outside", files[0], processors, 1, 50)
-                inside_result = self._run_one(task_id, "inside", files[1], processors, 50, 99)
-                result = adapt_multi(outside_result, inside_result)
-            else:
-                result = self._run_one(task_id, mode, files[0], processors, 1, 99)
+                if mode == "multi":
+                    if len(files) < 2:
+                        raise ValueError("双路同步分析需要巢外与巢内两个视频")
+                    outside_result = self._run_one(task_id, "outside", files[0], processors, 1, 50)
+                    inside_result = self._run_one(task_id, "inside", files[1], processors, 50, 99)
+                    result = adapt_multi(outside_result, inside_result)
+                else:
+                    result = self._run_one(task_id, mode, files[0], processors, 1, 99)
 
             self._update(
                 task_id,
@@ -216,13 +220,17 @@ class TaskManager:
         raw = processor.process_video(
             str(video_path), str(annotated_path), progress_callback=progress_callback)
 
+        self._update(task_id, status=RUNNING, progress=progress_hi,
+                     message="生成浏览器预览…")
+        preview_path = make_browser_preview(annotated_path)
+
         # 生成详细 HTML 分析报告
         if mode == "outside":
             create_outside_pollen_report(raw["pollen_analysis"], str(report_path))
         else:
             create_inside_report(raw["inside_metrics"], str(report_path))
 
-        annotated_url = f"/uploads/{annotated_path.name}"
+        annotated_url = f"/uploads/{preview_path.name}"
         report_url = f"/uploads/{report_path.name}"
         if mode == "outside":
             return adapt_outside(raw, video_path, annotated_url, report_url)

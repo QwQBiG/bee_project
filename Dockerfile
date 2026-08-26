@@ -12,11 +12,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt requirements-web.txt ./
-RUN pip install --no-cache-dir -r requirements-web.txt
+RUN pip install --no-cache-dir torch torchvision \
+    --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r requirements-web.txt
 
 COPY . .
 
 EXPOSE 8000
 VOLUME ["/app/runtime_results"]
 
-CMD ["python", "-m", "uvicorn", "web_app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

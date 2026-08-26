@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 
-from web_app import _make_archive, _make_browser_preview
+from app.media import make_browser_preview
 
 
 def main() -> None:
@@ -14,10 +14,7 @@ def main() -> None:
     videos = sorted(args.root.rglob("*_result.mp4"))
     for video in videos:
         print(f"Converting {video}")
-        _make_browser_preview(video)
-        archive = video.parent / "bee_analysis_results.zip"
-        if archive.exists():
-            _make_archive(video.parent, archive)
+        make_browser_preview(video)
     print(f"Converted {len(videos)} video(s).")
 
 

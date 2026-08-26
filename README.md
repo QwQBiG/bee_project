@@ -9,13 +9,21 @@
 
 ## 最简单的启动方式（Windows）
 
-双击项目根目录下的 `start_web.bat`。第一次启动会自动创建 Python 环境并安装依赖，耗时会稍长。浏览器会打开：
+双击项目根目录下的 `start_web.bat`。第一次启动会自动创建独立的 Python 环境、检测显卡和 NVIDIA 驱动，并安装匹配的 PyTorch：
+
+- 驱动支持 CUDA 12.8 及以上：优先安装官方 `cu128`
+- 驱动支持 CUDA 12.6：优先安装官方 `cu126`
+- 驱动支持 CUDA 11.8：安装官方 `cu118`
+- 没有兼容的 NVIDIA 显卡：自动安装 CPU 版本
+- CUDA 安装或实际运算验证失败：尝试较低兼容版本，最后回退 CPU
+
+CUDA 版 PyTorch 通常需要下载 1～3 GB，第一次启动耗时会较长；后续启动会复用已经验证过的环境。浏览器会打开：
 
 ```text
 http://127.0.0.1:8000
 ```
 
-停止服务时，回到黑色命令窗口按 `Ctrl+C`。
+停止服务时，点击网页右上角的“关闭程序”，或回到黑色命令窗口按 `Ctrl+C`。
 
 ## Docker 部署
 
@@ -32,8 +40,8 @@ docker compose up --build
 ## 手动启动
 
 ```bash
-python -m pip install -r requirements-web.txt
-python -m uvicorn web_app:app --host 0.0.0.0 --port 8000
+python tools/bootstrap_runtime.py
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 Linux/macOS 也可以运行：
@@ -47,16 +55,16 @@ chmod +x start_web.sh
 
 - 巢外：标注视频、进出事件、采粉分析报告、轨迹与行为统计
 - 巢内：标注视频、密度/活动/聚集分析报告、轨迹与行为统计
-- 所有任务：完整 JSON 和 ZIP 结果包
+- 所有任务：任务记录、结构化分析结果和统计 JSON 下载接口
 
-运行产生的文件默认位于 `runtime_results/`。每次上传使用独立任务目录，默认同时只运行一个推理任务，避免争抢显卡或内存。
+运行产生的上传视频、标注视频和报告默认位于 `app/uploads/`，任务记录保存在 `app/task_store.json`。推理任务会串行运行，避免多个任务同时争抢显卡或内存。
 
 可通过环境变量调整：
 
 - `BEE_DEVICE`：推理设备，例如 `cpu`、`cuda:0`
-- `BEE_MAX_UPLOAD_MB`：单个上传视频的最大 MB 数，默认 `4096`
-- `BEE_RUNTIME_DIR`：结果保存目录
-- `BEE_WORKERS`：并行分析任务数，默认 `1`
+- `BEE_TORCH_BACKEND`：覆盖自动选择，例如 `cpu`、`cu118`、`cu126`、`cu128`
+
+检测与安装结果会写入本地 `runtime_environment.json`，网页侧栏会显示当前使用“GPU 加速”还是“CPU 模式”。PyTorch 的 CUDA wheel 自带运行库，普通用户只需要兼容的 NVIDIA 驱动，不需要另外安装完整 CUDA Toolkit。
 
 ## 原命令行用法
 

@@ -26,6 +26,10 @@ ENV/
 # 输出结果
 output/
 runtime_results/
+runtime_environment.json
+.runtime-bootstrap.lock
+app/uploads/
+app/task_store.json
 
 # 临时文件
 tmp/

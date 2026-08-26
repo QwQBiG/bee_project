@@ -1,16 +1,20 @@
 """智能蜂场可视化分析平台 - FastAPI 入口。
 
 运行方式：
-    python app/run.py
-    或 uvicorn app.main:app --reload --port 8000
+    双击 start_web.bat
+    或 python -m uvicorn app.main:app --port 8000
 """
 
 import json
 import logging
+import os
+import signal
+import threading
+import time
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -24,6 +28,7 @@ DONE_STATUS = "done"
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 UPLOAD_DIR = BASE_DIR / "uploads"
+RUNTIME_STATUS_PATH = BASE_DIR.parent / "runtime_environment.json"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(
@@ -69,6 +74,39 @@ def index_page() -> FileResponse:
 @app.get("/result/{task_id}", include_in_schema=False)
 def result_page(task_id: str = "") -> FileResponse:
     return FileResponse(STATIC_DIR / "result.html")
+
+
+def _runtime_status() -> dict:
+    try:
+        return json.loads(RUNTIME_STATUS_PATH.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {"device": os.environ.get("BEE_DEVICE", "auto")}
+
+
+@app.get("/api/health")
+def health() -> dict:
+    return {"status": "ok", "preview": "vp8-webm", "runtime": _runtime_status()}
+
+
+def _stop_process_after_response() -> None:
+    time.sleep(0.6)
+    os.kill(os.getpid(), signal.SIGINT)
+
+
+@app.post("/api/shutdown")
+def shutdown(request: Request) -> dict:
+    client_host = request.client.host if request.client else ""
+    allow_remote = os.environ.get("BEE_ALLOW_REMOTE_SHUTDOWN", "").lower() in {
+        "1", "true", "yes",
+    }
+    if client_host not in {"127.0.0.1", "::1", "testclient"} and not allow_remote:
+        raise HTTPException(status_code=403, detail="只能在运行服务的电脑上关闭程序")
+    threading.Thread(
+        target=_stop_process_after_response,
+        name="bee-shutdown",
+        daemon=True,
+    ).start()
+    return {"status": "shutting_down", "message": "程序正在关闭"}
 
 
 # ---------- 任务 API ----------

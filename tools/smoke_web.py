@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-import web_app
+import app.main as web_main
 
 
 def main() -> None:
@@ -16,25 +16,26 @@ def main() -> None:
     parser.add_argument("--timeout", type=float, default=180.0)
     args = parser.parse_args()
 
-    client = TestClient(web_app.app)
+    client = TestClient(web_main.app)
     with args.video.open("rb") as source:
         response = client.post(
-            "/api/jobs",
+            "/api/tasks",
             data={"mode": args.mode},
-            files={"video": (args.video.name, source, "video/mp4")},
+            files={"files": (args.video.name, source, "video/mp4")},
         )
     response.raise_for_status()
     job = response.json()
+    task_id = job["task_id"]
     deadline = time.monotonic() + args.timeout
     while time.monotonic() < deadline:
-        job = client.get(f"/api/jobs/{job['id']}").json()
-        if job["status"] in {"completed", "failed"}:
+        job = client.get(f"/api/tasks/{task_id}").json()
+        if job["status"] in {"done", "failed"}:
             break
         time.sleep(0.5)
 
     print(f"status={job['status']} progress={job['progress']} message={job['message']}")
     print("files=" + ", ".join(item["name"] for item in job.get("files", [])))
-    if job["status"] != "completed":
+    if job["status"] != "done":
         raise SystemExit(1)
 
 

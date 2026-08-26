@@ -482,6 +482,7 @@ function renderDownloads(taskId, r) {
       <div class="action-row">
         ${r.report_html ? `<a class="btn btn-outline" href="${r.report_html}" target="_blank">打开分析报告</a>` : ''}
         ${videos.map((v) => `<a class="btn btn-outline" href="${v.href}" download>${v.label}</a>`).join('')}
+        <a class="btn btn-outline" href="/api/tasks/${taskId}/download/stats">下载统计 JSON</a>
       </div>
     </section>`;
 }

@@ -14,13 +14,18 @@
       智能蜂场可视化分析平台
       <small>分析结果</small>
     </div>
-    <a href="/">返回首页</a>
+    <div class="topbar-actions">
+      <span class="runtime-device" id="runtimeDevice">检测设备中…</span>
+      <a href="/">返回首页</a>
+      <button class="shutdown-btn" id="shutdownButton" type="button">关闭程序</button>
+    </div>
   </header>
 
   <main class="container" id="app">
     <div class="empty-tip" id="loading">正在加载结果…</div>
   </main>
 
+  <script src="/static/js/common.js"></script>
   <script src="/static/js/result.js"></script>
 </body>
 </html>

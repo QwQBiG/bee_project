@@ -60,6 +60,27 @@ body {
 .topbar .brand small { font-weight: 400; font-size: 13px; opacity: 0.75; }
 .topbar a { color: #fff; text-decoration: none; font-size: 14px; opacity: 0.85; }
 .topbar a:hover { opacity: 1; }
+.topbar-actions { display: flex; align-items: center; gap: 14px; }
+.runtime-device {
+  padding: 5px 10px; border-radius: 999px; font-size: 12px;
+  color: #ffe6b8; background: rgba(255,255,255,.1);
+}
+.runtime-device.gpu { color: #b8f5ce; background: rgba(59,165,93,.18); }
+.shutdown-btn {
+  border: 1px solid rgba(255,255,255,.3); border-radius: 8px;
+  padding: 7px 12px; color: #fff; background: transparent; cursor: pointer;
+}
+.shutdown-btn:hover { background: rgba(217,83,79,.3); }
+.shutdown-btn:disabled { opacity: .55; cursor: wait; }
+
+.shutdown-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.shutdown-card { max-width: 480px; text-align: center; }
+.shutdown-card h1 { margin: 18px 0 8px; color: var(--brown); }
+.shutdown-card p { color: var(--text-muted); }
+.shutdown-hex {
+  width: 58px; height: 58px; margin: 0 auto; background: var(--primary);
+  clip-path: polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+}
 
 /* ---------- 布局 ---------- */
 .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }

@@ -9,6 +9,8 @@
 """
 
 import logging
+import json
+import os
 import threading
 from pathlib import Path
 from typing import Optional
@@ -26,12 +28,13 @@ logger = logging.getLogger("app.engine")
 # 项目根目录（app/ 的上一级）
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = PROJECT_ROOT / "configs" / "config.yaml"
+RUNTIME_STATUS_PATH = PROJECT_ROOT / "runtime_environment.json"
 
 # config.yaml 未配置花粉入口区域时的默认区域 [x, y, w, h]（归一化），
 # 需按实际画面中的蜂箱巢口位置标定。
 DEFAULT_ENTRANCE_REGION = [0.30, 0.30, 0.40, 0.40]
 
-_lock = threading.Lock()
+_lock = threading.RLock()
 _processors: dict = {"outside": None, "inside": None}
 _config: Optional[dict] = None
 
@@ -51,6 +54,20 @@ def load_config() -> dict:
 
     with CONFIG_PATH.open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f) or {}
+
+    # start_web.bat 的环境引导程序会把实际验证通过的设备写到这里。
+    device = os.environ.get("BEE_DEVICE")
+    if not device and RUNTIME_STATUS_PATH.exists():
+        try:
+            device = json.loads(RUNTIME_STATUS_PATH.read_text(encoding="utf-8")).get("device")
+        except (OSError, json.JSONDecodeError):
+            device = None
+    if device and device != "auto":
+        config["device"] = device
+        for section_name in ("tracker", "outside_tracker", "inside_tracker"):
+            section = config.get(section_name)
+            if isinstance(section, dict):
+                section["device"] = device
 
     # 模型路径绝对化
     for key in ("outside_tracker", "inside_tracker"):
