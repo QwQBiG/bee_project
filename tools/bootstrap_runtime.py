@@ -21,6 +21,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 STATUS_PATH = PROJECT_ROOT / "runtime_environment.json"
 LOCK_PATH = PROJECT_ROOT / ".runtime-bootstrap.lock"
 REQUIREMENTS_PATH = PROJECT_ROOT / "requirements.txt"
+LOCAL_WHEEL_DIR = PROJECT_ROOT / "packages"
 PYTORCH_INDEX = "https://download.pytorch.org/whl/{backend}"
 SUPPORTED_PYTHON_MIN = (3, 10)
 SUPPORTED_PYTHON_MAX = (3, 14)
@@ -34,6 +35,16 @@ class NvidiaInfo:
     driver_version: str | None = None
     cuda_max: tuple[int, int] | None = None
     compute_capability: str | None = None
+
+
+@dataclass(frozen=True)
+class LocalTorchWheel:
+    path: Path
+    version: str
+    backend: str
+    python_tag: str
+    abi_tag: str
+    platform_tag: str
 
 
 def parse_cuda_version(output: str) -> tuple[int, int] | None:
@@ -86,6 +97,79 @@ def cuda_candidates(cuda_max: tuple[int, int] | None) -> list[str]:
     if cuda_max >= (11, 8):
         candidates.append("cu118")
     return candidates
+
+
+def parse_local_torch_wheel(path: Path) -> LocalTorchWheel | None:
+    """Parse the supported tags from a CUDA Torch wheel filename."""
+    match = re.fullmatch(
+        r"torch-(?P<version>[^-]+)\+(?P<backend>cu\d+)"
+        r"-(?P<python>[^-]+)-(?P<abi>[^-]+)-(?P<platform>[^.]+)\.whl",
+        path.name,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+    return LocalTorchWheel(
+        path=path,
+        version=match.group("version"),
+        backend=match.group("backend").lower(),
+        python_tag=match.group("python").lower(),
+        abi_tag=match.group("abi").lower(),
+        platform_tag=match.group("platform").lower(),
+    )
+
+
+def current_python_tag() -> str:
+    return f"cp{sys.version_info.major}{sys.version_info.minor}"
+
+
+def current_platform_tag() -> str | None:
+    system = platform.system()
+    machine = platform.machine().lower()
+    if system == "Windows":
+        if machine in {"amd64", "x86_64"}:
+            return "win_amd64"
+        if machine in {"arm64", "aarch64"}:
+            return "win_arm64"
+    return None
+
+
+def backend_cuda_version(backend: str) -> tuple[int, int] | None:
+    match = re.fullmatch(r"cu(\d+)", backend)
+    if not match:
+        return None
+    digits = match.group(1)
+    if len(digits) < 2:
+        return None
+    return int(digits[:-1]), int(digits[-1])
+
+
+def compatible_local_torch_wheel(nvidia: NvidiaInfo) -> LocalTorchWheel | None:
+    """Find a local CUDA wheel matching this Python, platform and driver."""
+    if not nvidia.available or nvidia.cuda_max is None:
+        return None
+    python_tag = current_python_tag()
+    platform_tag = current_platform_tag()
+    if platform_tag is None or not LOCAL_WHEEL_DIR.exists():
+        return None
+
+    compatible: list[LocalTorchWheel] = []
+    for path in LOCAL_WHEEL_DIR.glob("torch-*.whl"):
+        wheel = parse_local_torch_wheel(path)
+        if wheel is None:
+            continue
+        required_cuda = backend_cuda_version(wheel.backend)
+        if (
+            wheel.python_tag == python_tag
+            and wheel.abi_tag == python_tag
+            and wheel.platform_tag == platform_tag
+            and required_cuda is not None
+            and nvidia.cuda_max >= required_cuda
+        ):
+            compatible.append(wheel)
+    if not compatible:
+        return None
+    return sorted(compatible, key=lambda wheel: wheel.path.name, reverse=True)[0]
 
 
 def requirements_digest() -> str:
@@ -151,8 +235,8 @@ def requested_backend(nvidia: NvidiaInfo) -> str:
         return "cpu"
     if requested.startswith("cu"):
         return requested
-    candidates = cuda_candidates(nvidia.cuda_max) if nvidia.available else []
-    return candidates[0] if candidates else "cpu"
+    local_wheel = compatible_local_torch_wheel(nvidia)
+    return local_wheel.backend if local_wheel else "cpu"
 
 
 def backend_from_torch(torch_info: dict[str, object]) -> str:
@@ -171,8 +255,20 @@ def install_torch(nvidia: NvidiaInfo, force: bool = False) -> tuple[str, dict[st
         if target == "cpu" or bool(existing.get("cuda_available")):
             return backend_from_torch(existing), existing
 
-    print(f"[Bee Vision] Installing PyTorch backend once: {target}")
-    arguments = ["install", "torch", "torchvision"]
+    local_wheel = compatible_local_torch_wheel(nvidia)
+    use_local_wheel = local_wheel is not None and local_wheel.backend == target
+    if use_local_wheel:
+        print(f"[Bee Vision] Installing local PyTorch wheel: {local_wheel.path}")
+        arguments = [
+            "install",
+            str(local_wheel.path),
+            "torchvision",
+            "--find-links",
+            str(LOCAL_WHEEL_DIR),
+        ]
+    else:
+        print(f"[Bee Vision] Installing PyTorch backend once: {target}")
+        arguments = ["install", "torch", "torchvision"]
     if existing is not None or force:
         arguments.append("--force-reinstall")
     arguments.extend(["--index-url", PYTORCH_INDEX.format(backend=target)])
@@ -311,6 +407,13 @@ def main() -> None:
             f"Driver CUDA: {'.'.join(map(str, nvidia.cuda_max)) if nvidia.cuda_max else 'none'}"
         )
         if args.dry_run:
+            local_wheel = compatible_local_torch_wheel(nvidia)
+            if local_wheel:
+                print(f"[Bee Vision] Compatible local wheel: {local_wheel.path}")
+            elif nvidia.available:
+                print("[Bee Vision] No compatible local CUDA wheel; CPU will be used.")
+            else:
+                print("[Bee Vision] No NVIDIA GPU detected; CPU will be used.")
             print(f"[Bee Vision] Selected backend: {requested_backend(nvidia)}")
             return
 
@@ -322,6 +425,17 @@ def main() -> None:
                 f"torch={torch_info['version']} gpu={torch_info.get('device_name') or 'none'}"
             )
             return
+
+        local_wheel = compatible_local_torch_wheel(nvidia)
+        if local_wheel:
+            print(
+                "[Bee Vision] Compatible local CUDA wheel found: "
+                f"{local_wheel.path.name}"
+            )
+        elif nvidia.available:
+            print("[Bee Vision] NVIDIA GPU detected, but no compatible local CUDA wheel was found; using CPU.")
+        else:
+            print("[Bee Vision] NVIDIA GPU not detected; using CPU.")
 
         backend, torch_info = install_torch(nvidia, args.force_torch)
         if not run_pip(["install", "--quiet", "-r", str(REQUIREMENTS_PATH)]):

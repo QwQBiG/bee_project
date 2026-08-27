@@ -13,13 +13,22 @@
 
 ## 最简单的启动方式（Windows）
 
-双击项目根目录下的 `start_web.bat`。第一次启动会自动创建独立的 Python 环境、检测显卡和 NVIDIA 驱动，并安装匹配的 PyTorch：
+双击项目根目录下的 `start_web.bat`。启动脚本会优先查找 64 位 Python 3.13，并用它创建项目环境。找不到时，会从 Python 官方站点下载经过 SHA-256 校验的 Python 3.13.15 便携包，解压到 `.runtime/python313/` 并初始化 pip。
 
-- 驱动支持 CUDA 12.8 及以上：优先安装官方 `cu128`
-- 驱动支持 CUDA 12.6：优先安装官方 `cu126`
-- 驱动支持 CUDA 11.8：安装官方 `cu118`
-- 没有兼容的 NVIDIA 显卡：自动安装 CPU 版本
-- CUDA 安装或实际运算验证失败：尝试较低兼容版本，最后回退 CPU
+随后脚本检测显卡和 NVIDIA 驱动，并安装 PyTorch。可将预先下载的 CUDA 版 PyTorch wheel 放在项目的 `packages/` 目录中，例如：
+
+```text
+packages/torch-2.13.0+cu132-cp313-cp313-win_amd64.whl
+```
+
+- 本地 wheel 的操作系统、Python 标签、CUDA 版本和 NVIDIA 驱动全部兼容：直接使用本地文件安装
+- 没有 NVIDIA 显卡：联网安装 CPU 版本
+- 有 NVIDIA 显卡但本地 wheel 不兼容或不存在：联网安装 CPU 版本
+- 已经安装并验证通过的 PyTorch：直接复用，不会重复安装
+
+`packages/*.whl` 默认不会提交到 Git。该 Windows wheel 不能用于 macOS、Linux 或不同 Python 版本。
+
+Python选择顺序为：已有的 Python 3.13 项目环境、外部 Python 3.13、项目内便携 Python 3.13。若原 `.venv` 使用其他 Python 版本，脚本会保留它，并新建 `.venv-py313`，不会删除旧环境。
 
 CUDA 版 PyTorch 通常需要下载 1～3 GB，第一次启动耗时会较长；后续启动会复用已经验证过的环境。浏览器会打开：
 
@@ -67,7 +76,7 @@ chmod +x start_web.sh
 可通过环境变量调整：
 
 - `BEE_DEVICE`：推理设备，例如 `cpu`、`cuda:0`
-- `BEE_TORCH_BACKEND`：覆盖自动选择，例如 `cpu`、`cu118`、`cu126`、`cu128`
+- `BEE_TORCH_BACKEND`：覆盖自动选择，例如 `cpu`、`cu118`、`cu126`、`cu128`；手动指定 CUDA 后端时允许从官方源联网安装
 
 检测与安装结果会写入本地 `runtime_environment.json`，网页侧栏会显示当前使用“GPU 加速”还是“CPU 模式”。PyTorch 的 CUDA wheel 自带运行库，普通用户只需要兼容的 NVIDIA 驱动，不需要另外安装完整 CUDA Toolkit。
 
