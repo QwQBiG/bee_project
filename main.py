@@ -224,7 +224,7 @@ def run_demo():
     from pathlib import Path
     project_root = Path(__file__).parent
     dirs = ['configs', 'annotation', 'tracking', 'behavior', 'visualization', 
-            'inference', 'models', 'utils', 'datasets', 'doc']
+            'inference', 'models', 'utils', 'datasets', 'docs']
     for d in dirs:
         status = "[OK]" if (project_root / d).exists() else "[MISSING]"
         print(f"  {status} {d}/")
@@ -331,7 +331,7 @@ def run_annotate_mode(args):
     """拒绝使用不兼容的早期框标注入口。"""
     print("ERROR: 旧本地标注器不支持统一 JSON、头胸腹骨架和来源门禁。",
           file=sys.stderr)
-    print("请按 doc/CVAT姿态标注与回导流程.md 建立和回导标注任务。", file=sys.stderr)
+    print("请按 docs/annotation/CVAT姿态标注与回导流程.md 建立和回导标注任务。", file=sys.stderr)
     raise SystemExit(2)
 
 

@@ -1,6 +1,10 @@
 # 蜂群视频智能分析
 
-这是一个面向养蜂与蜂群行为研究的本地视频分析工具。现在既保留了命令行能力，也提供了普通用户可以直接使用的中文网页：
+这是一个面向养蜂与蜂群行为研究的本地视频分析工具。现在既保留了命令行能力，也提供了普通用户可以直接使用的中文网页。
+
+完整的使用、标注和评测文档见 [docs/README.md](docs/README.md)。
+
+网页基本流程：
 
 1. 选择“巢内视频”或“巢外视频”
 2. 从电脑中选择并上传视频
@@ -40,11 +44,11 @@ docker compose up --build
 ## 手动启动（Web 界面）
 
 ```bash
-python -m pip install -r requirements.txt
-python app/run.py
+python tools/bootstrap_runtime.py
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-启动后自动打开浏览器访问 `http://127.0.0.1:8000`（本质是 `uvicorn app.main:app --reload`）。
+启动后在浏览器访问 `http://127.0.0.1:8000`。
 Linux/macOS 也可以运行：
 
 ```bash
