@@ -438,7 +438,7 @@ def main() -> None:
             print("[Bee Vision] NVIDIA GPU not detected; using CPU.")
 
         backend, torch_info = install_torch(nvidia, args.force_torch)
-        if not run_pip(["install", "--quiet", "-r", str(REQUIREMENTS_PATH)]):
+        if not run_pip(["install", "--quiet", "-r", str(REQUIREMENTS_PATH), "--extra-index-url", "https://pypi.org/simple/"]):
             raise RuntimeError("Application dependency installation failed.")
         status = write_status(backend, torch_info, nvidia)
         print(
