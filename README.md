@@ -38,6 +38,16 @@ http://127.0.0.1:8000
 
 停止服务时，点击网页右上角的“关闭程序”，或回到黑色命令窗口按 `Ctrl+C`。
 
+## 最简单的启动方式（macOS）
+
+在 Finder 中双击项目根目录下的 `start_web.command`。脚本会定位项目目录、检查 `8000` 端口、创建或复用 `.venv-macos`，安装并校验依赖，启动成功后自动打开默认浏览器。
+
+Mac 需要 64 位 Python 3.10～3.13，推荐 Python 3.12。脚本会优先查找 Python 3.12；如果没有兼容 Python 但已经安装 Homebrew，会通过 Homebrew 安装 `python@3.12`。如果没有 Homebrew，脚本会打开 Python 官方下载页面，安装 Python 后再次双击即可。
+
+Apple Silicon Mac 会安装标准 macOS 版 PyTorch，并在可用时自动使用 Metal/MPS GPU 加速，不需要也不会下载 CUDA 版 PyTorch。Intel Mac 或 MPS 不可用时自动使用 CPU。首次安装依赖需要联网且耗时较长，后续启动会复用环境。
+
+如果 macOS 首次阻止脚本运行，可在 Finder 中右键 `start_web.command`，选择“打开”并确认。停止服务时，可点击网页右上角的“关闭程序”，或在启动窗口按 `Ctrl+C`。
+
 ## Docker 部署
 
 已安装 Docker Desktop 的电脑或服务器可以直接运行：
@@ -57,8 +67,7 @@ python tools/bootstrap_runtime.py
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-启动后在浏览器访问 `http://127.0.0.1:8000`。
-Linux/macOS 也可以运行：
+启动后在浏览器访问 `http://127.0.0.1:8000`。Linux/macOS 也可以在终端运行：
 
 ```bash
 chmod +x start_web.sh
@@ -75,10 +84,10 @@ chmod +x start_web.sh
 
 可通过环境变量调整：
 
-- `BEE_DEVICE`：推理设备，例如 `cpu`、`cuda:0`
-- `BEE_TORCH_BACKEND`：覆盖自动选择，例如 `cpu`、`cu118`、`cu126`、`cu128`；手动指定 CUDA 后端时允许从官方源联网安装
+- `BEE_DEVICE`：推理设备，例如 `cpu`、`mps`、`cuda:0`
+- `BEE_TORCH_BACKEND`：覆盖自动选择，例如 `cpu`、`mps`、`cu118`、`cu126`、`cu128`；手动指定 CUDA 后端时允许从官方源联网安装
 
-检测与安装结果会写入本地 `runtime_environment.json`，网页侧栏会显示当前使用“GPU 加速”还是“CPU 模式”。PyTorch 的 CUDA wheel 自带运行库，普通用户只需要兼容的 NVIDIA 驱动，不需要另外安装完整 CUDA Toolkit。
+检测与安装结果会写入本地 `runtime_environment.json`，网页侧栏会显示当前使用“GPU 加速”还是“CPU 模式”。Windows 的 PyTorch CUDA wheel 自带运行库，普通用户只需要兼容的 NVIDIA 驱动，不需要另外安装完整 CUDA Toolkit；macOS 使用标准 PyTorch 包内置的 MPS 支持。
 
 ## 原命令行用法
 

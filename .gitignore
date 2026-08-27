@@ -11,6 +11,9 @@ env/
 ENV/
 .venv/
 .venv-py313/
+.venv-py312/
+.venv-macos/
+.venv-macos-py312/
 .runtime/
 
 # IDE

@@ -12,6 +12,9 @@ fetch('/api/health')
     if (runtime.device === 'cuda:0') {
       runtimeDevice.classList.add('gpu');
       runtimeDevice.textContent = `GPU · ${torchInfo.device_name || runtime.nvidia?.name || 'CUDA'}`;
+    } else if (runtime.device === 'mps') {
+      runtimeDevice.classList.add('gpu');
+      runtimeDevice.textContent = `GPU · ${torchInfo.device_name || 'Apple Metal (MPS)'}`;
     } else {
       runtimeDevice.textContent = 'CPU 模式';
     }
@@ -33,7 +36,7 @@ if (shutdownButton) {
           <div class="shutdown-card">
             <div class="shutdown-hex"></div>
             <h1>程序已关闭</h1>
-            <p>现在可以安全关闭浏览器页面。下次使用时，请重新双击 start_web.bat。</p>
+            <p>现在可以安全关闭浏览器页面。下次使用时，请重新双击系统对应的启动文件。</p>
           </div>
         </main>`;
     } catch (error) {

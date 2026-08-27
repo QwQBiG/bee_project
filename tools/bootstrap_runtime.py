@@ -25,7 +25,7 @@ LOCAL_WHEEL_DIR = PROJECT_ROOT / "packages"
 PYTORCH_INDEX = "https://download.pytorch.org/whl/{backend}"
 SUPPORTED_PYTHON_MIN = (3, 10)
 SUPPORTED_PYTHON_MAX = (3, 14)
-BOOTSTRAP_VERSION = 2
+BOOTSTRAP_VERSION = 3
 
 
 @dataclass
@@ -190,6 +190,8 @@ import json
 try:
     import torch
     cuda_ok = False
+    mps_built = False
+    mps_ok = False
     device_name = None
     error = None
     try:
@@ -199,10 +201,22 @@ try:
             device_name = torch.cuda.get_device_name(0)
     except Exception as exc:
         error = str(exc)
+    try:
+        mps_backend = getattr(torch.backends, "mps", None)
+        mps_built = bool(mps_backend and mps_backend.is_built())
+        mps_ok = bool(mps_backend and mps_backend.is_available())
+        if mps_ok:
+            torch.zeros(1, device="mps")
+            device_name = "Apple Metal (MPS)"
+    except Exception as exc:
+        mps_ok = False
+        error = str(exc)
     result = {
         "version": torch.__version__,
         "cuda_runtime": torch.version.cuda,
         "cuda_available": cuda_ok,
+        "mps_built": mps_built,
+        "mps_available": mps_ok,
         "device_name": device_name,
         "error": error,
     }
@@ -233,13 +247,21 @@ def requested_backend(nvidia: NvidiaInfo) -> str:
     requested = os.environ.get("BEE_TORCH_BACKEND", "auto").strip().lower()
     if requested == "cpu":
         return "cpu"
+    if requested == "mps":
+        return "mps"
     if requested.startswith("cu"):
         return requested
+    if platform.system() == "Darwin" and platform.machine().lower() in {
+        "arm64", "aarch64",
+    }:
+        return "mps"
     local_wheel = compatible_local_torch_wheel(nvidia)
     return local_wheel.backend if local_wheel else "cpu"
 
 
 def backend_from_torch(torch_info: dict[str, object]) -> str:
+    if torch_info.get("mps_available"):
+        return "mps"
     version = str(torch_info.get("version") or "")
     match = re.search(r"\+(cu\d+|cpu)$", version)
     if match:
@@ -252,7 +274,7 @@ def install_torch(nvidia: NvidiaInfo, force: bool = False) -> tuple[str, dict[st
     target = requested_backend(nvidia)
     existing = inspect_torch()
     if existing and not force:
-        if target == "cpu" or bool(existing.get("cuda_available")):
+        if target == "cpu" or bool(existing.get("cuda_available")) or target == "mps":
             return backend_from_torch(existing), existing
 
     local_wheel = compatible_local_torch_wheel(nvidia)
@@ -271,7 +293,10 @@ def install_torch(nvidia: NvidiaInfo, force: bool = False) -> tuple[str, dict[st
         arguments = ["install", "torch", "torchvision"]
     if existing is not None or force:
         arguments.append("--force-reinstall")
-    arguments.extend(["--index-url", PYTORCH_INDEX.format(backend=target)])
+    # All macOS wheels come from PyPI and include Metal/MPS support when the
+    # hardware and OS support it. Linux/Windows use PyTorch's CPU/CUDA indexes.
+    if platform.system() != "Darwin":
+        arguments.extend(["--index-url", PYTORCH_INDEX.format(backend=target)])
     if not run_pip(arguments):
         raise RuntimeError(
             f"PyTorch {target} installation failed. It will not download another backend automatically."
@@ -280,12 +305,12 @@ def install_torch(nvidia: NvidiaInfo, force: bool = False) -> tuple[str, dict[st
     installed = inspect_torch()
     if installed is None:
         raise RuntimeError("PyTorch was installed but cannot be imported in a fresh process.")
-    if target != "cpu" and not installed.get("cuda_available"):
+    if target.startswith("cu") and not installed.get("cuda_available"):
         raise RuntimeError(
             f"PyTorch {target} was installed, but CUDA validation failed: "
             f"{installed.get('error') or 'CUDA is unavailable'}"
         )
-    return target, installed
+    return backend_from_torch(installed), installed
 
 
 def load_status() -> dict | None:
@@ -311,16 +336,22 @@ def cached_environment_is_current(status: dict | None, nvidia: NvidiaInfo) -> bo
     if installed_distribution_version("torchvision") != status.get("torchvision_version"):
         return False
     target = requested_backend(nvidia)
-    if target != "cpu" and not torch_info.get("cuda_available"):
+    if target.startswith("cu") and not torch_info.get("cuda_available"):
         return False
     return True
 
 
 def write_status(backend: str, torch_info: dict[str, object], nvidia: NvidiaInfo) -> dict:
+    if torch_info.get("cuda_available"):
+        device = "cuda:0"
+    elif torch_info.get("mps_available"):
+        device = "mps"
+    else:
+        device = "cpu"
     status = {
         "bootstrap_version": BOOTSTRAP_VERSION,
         "requirements_sha256": requirements_digest(),
-        "device": "cuda:0" if torch_info["cuda_available"] else "cpu",
+        "device": device,
         "backend": backend,
         "python": platform.python_version(),
         "python_executable": sys.executable,
@@ -410,6 +441,8 @@ def main() -> None:
             local_wheel = compatible_local_torch_wheel(nvidia)
             if local_wheel:
                 print(f"[Bee Vision] Compatible local wheel: {local_wheel.path}")
+            elif requested_backend(nvidia) == "mps":
+                print("[Bee Vision] Apple Silicon detected; MPS will be checked after installation.")
             elif nvidia.available:
                 print("[Bee Vision] No compatible local CUDA wheel; CPU will be used.")
             else:
@@ -432,6 +465,8 @@ def main() -> None:
                 "[Bee Vision] Compatible local CUDA wheel found: "
                 f"{local_wheel.path.name}"
             )
+        elif requested_backend(nvidia) == "mps":
+            print("[Bee Vision] Apple Silicon detected; installing the standard macOS PyTorch build.")
         elif nvidia.available:
             print("[Bee Vision] NVIDIA GPU detected, but no compatible local CUDA wheel was found; using CPU.")
         else:

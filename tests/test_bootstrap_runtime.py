@@ -39,9 +39,17 @@ def test_backend_can_be_overridden(monkeypatch):
     assert requested_backend(NvidiaInfo(available=True, cuda_max=(13, 3))) == "cpu"
 
 
+def test_auto_backend_uses_mps_on_apple_silicon(monkeypatch):
+    monkeypatch.delenv("BEE_TORCH_BACKEND", raising=False)
+    monkeypatch.setattr("tools.bootstrap_runtime.platform.system", lambda: "Darwin")
+    monkeypatch.setattr("tools.bootstrap_runtime.platform.machine", lambda: "arm64")
+    assert requested_backend(NvidiaInfo()) == "mps"
+
+
 def test_backend_is_read_from_installed_torch_version():
     assert backend_from_torch({"version": "2.11.0+cu128", "cuda_runtime": "12.8"}) == "cu128"
     assert backend_from_torch({"version": "2.13.0+cpu", "cuda_runtime": None}) == "cpu"
+    assert backend_from_torch({"version": "2.13.0", "mps_available": True}) == "mps"
 
 
 def test_local_wheel_filename_and_cuda_backend_are_parsed():
@@ -122,3 +130,61 @@ def test_install_prefers_a_compatible_local_wheel(monkeypatch, tmp_path):
     assert backend == "cu132"
     assert info["cuda_available"] is True
     assert str(wheel.path) in pip_calls[0]
+
+
+def test_macos_mps_install_uses_standard_pypi_wheel(monkeypatch):
+    monkeypatch.delenv("BEE_TORCH_BACKEND", raising=False)
+    monkeypatch.setattr("tools.bootstrap_runtime.platform.system", lambda: "Darwin")
+    monkeypatch.setattr("tools.bootstrap_runtime.platform.machine", lambda: "arm64")
+    monkeypatch.setattr("tools.bootstrap_runtime.compatible_local_torch_wheel", lambda _: None)
+    inspections = iter(
+        [
+            None,
+            {
+                "version": "2.13.0",
+                "cuda_runtime": None,
+                "cuda_available": False,
+                "mps_available": True,
+            },
+        ]
+    )
+    pip_calls = []
+    monkeypatch.setattr("tools.bootstrap_runtime.inspect_torch", lambda: next(inspections))
+    monkeypatch.setattr(
+        "tools.bootstrap_runtime.run_pip", lambda arguments: pip_calls.append(arguments) or True
+    )
+
+    backend, info = install_torch(NvidiaInfo())
+
+    assert backend == "mps"
+    assert info["mps_available"] is True
+    assert pip_calls == [["install", "torch", "torchvision"]]
+
+
+def test_intel_macos_cpu_install_also_uses_standard_pypi_wheel(monkeypatch):
+    monkeypatch.delenv("BEE_TORCH_BACKEND", raising=False)
+    monkeypatch.setattr("tools.bootstrap_runtime.platform.system", lambda: "Darwin")
+    monkeypatch.setattr("tools.bootstrap_runtime.platform.machine", lambda: "x86_64")
+    monkeypatch.setattr("tools.bootstrap_runtime.compatible_local_torch_wheel", lambda _: None)
+    inspections = iter(
+        [
+            None,
+            {
+                "version": "2.13.0",
+                "cuda_runtime": None,
+                "cuda_available": False,
+                "mps_available": False,
+            },
+        ]
+    )
+    pip_calls = []
+    monkeypatch.setattr("tools.bootstrap_runtime.inspect_torch", lambda: next(inspections))
+    monkeypatch.setattr(
+        "tools.bootstrap_runtime.run_pip", lambda arguments: pip_calls.append(arguments) or True
+    )
+
+    backend, info = install_torch(NvidiaInfo())
+
+    assert backend == "cpu"
+    assert info["mps_available"] is False
+    assert pip_calls == [["install", "torch", "torchvision"]]
