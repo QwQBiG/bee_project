@@ -200,7 +200,10 @@ function Get-PortablePython313 {
         Invoke-WebRequest -UseBasicParsing -Uri $GetPipUrl -OutFile $getPipPath
     }
     $stagingPython = Join-Path $stagingDir "python.exe"
-    & $stagingPython $getPipPath --no-warn-script-location
+    # PowerShell treats every success-stream item emitted by a function as part
+    # of its return value. Send pip's progress directly to the host so that
+    # Get-PortablePython313 returns only the Python executable path.
+    & $stagingPython $getPipPath --no-warn-script-location | Out-Host
     if ($LASTEXITCODE -ne 0 -or -not (Test-Python313 $stagingPython -RequirePip)) {
         throw "Portable Python was extracted, but pip initialization failed."
     }
