@@ -30,19 +30,19 @@ def parse_args():
         epilog="""
 示例用法:
   # 处理巢外视频
-  python main.py --mode outside --video data/outside.mp4 --output results/
+  run_cli.bat --mode outside --video data/outside.mp4 --output results/
 
   # 处理巢内视频
-  python main.py --mode inside --video data/inside.mp4 --output results/
+  run_cli.bat --mode inside --video data/inside.mp4 --output results/
 
   # 多模态同步处理
-  python main.py --mode multi --video data/outside.mp4 --video_inside data/inside.mp4 --output results/
+  run_cli.bat --mode multi --video data/outside.mp4 --video_inside data/inside.mp4 --output results/
 
   # 使用标注工具
-  python main.py --mode annotate --video data/video.mp4 --output annotations/
+  run_cli.bat --mode annotate --video data/video.mp4 --output annotations/
 
   # 模型训练
-  python main.py --mode train --config configs/train_config.yaml
+  run_cli.bat --mode train --config configs/train_config.yaml
         """
     )
     
@@ -290,7 +290,7 @@ def run_inside_mode(args):
     with open(output_dir / 'inside_stats.json', 'w', encoding='utf-8') as f:
         json.dump(stats, f, ensure_ascii=False, indent=2, default=str)
 
-    # 单文件 HTML 报告：直接双击即可在浏览器查看，无需启动 Web 服务。
+    # 单文件 HTML 报告：直接双击即可离线查看，无需启动常驻服务。
     from visualization.inside_report import create_inside_report
     report_path = create_inside_report(
         stats.get('inside_metrics', {}), output_dir / 'inside_analysis_report.html')
