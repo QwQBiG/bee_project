@@ -132,11 +132,15 @@ function Initialize-PortablePython {
 
 function Get-InstalledDistributionVersion {
     param([string]$DistributionName)
-    $version = & $PythonExe -c "import importlib.metadata; print(importlib.metadata.version('$DistributionName'))" 2>$null
+    $output = & $PythonExe -m pip show $DistributionName 2>$null
     if ($LASTEXITCODE -ne 0) {
         return $null
     }
-    return ($version | Select-Object -Last 1).Trim()
+    $versionLine = $output | Select-String "^Version:" | Select-Object -First 1
+    if ($null -eq $versionLine) {
+        return $null
+    }
+    return $versionLine.Line -replace "^Version:\s*", ""
 }
 
 function Install-ProjectDependencies {
