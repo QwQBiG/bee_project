@@ -2,6 +2,7 @@
 setlocal
 chcp 65001 >nul
 cd /d "%~dp0"
+set "YOLO_CONFIG_DIR=%~dp0.runtime\ultralytics"
 
 echo [Bee Vision] Preparing the portable Python runtime...
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\prepare_portable_runtime.ps1"

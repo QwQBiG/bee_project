@@ -25,6 +25,8 @@ $RequirementsPath = Join-Path $ProjectRoot "requirements.txt"
 $PythonArchivePath = Join-Path $PackagesRoot $PythonArchiveName
 $GetPipPath = Join-Path $PackagesRoot "get-pip.py"
 $TorchWheelPath = Join-Path $PackagesRoot $TorchWheelName
+$env:YOLO_CONFIG_DIR = Join-Path $RuntimeRoot "ultralytics"
+New-Item -ItemType Directory -Force -Path $env:YOLO_CONFIG_DIR | Out-Null
 
 function Invoke-Checked {
     param(
@@ -132,15 +134,20 @@ function Initialize-PortablePython {
 
 function Get-InstalledDistributionVersion {
     param([string]$DistributionName)
-    $output = & $PythonExe -m pip show $DistributionName 2>$null
+    # `pip show <missing-package>` writes a warning to stderr. Windows
+    # PowerShell 5.1 promotes that harmless warning to NativeCommandError when
+    # ErrorActionPreference is Stop, which aborts a clean first-time setup.
+    # Read installed metadata directly and return an empty string when absent.
+    $versionCode = "import importlib.metadata as m, sys; n=sys.argv[1].lower().replace('_', '-'); print(next((d.version for d in m.distributions() if (d.metadata.get('Name') or '').lower().replace('_', '-') == n), ''))"
+    $output = & $PythonExe -c $versionCode $DistributionName
     if ($LASTEXITCODE -ne 0) {
+        throw "Unable to inspect installed package: $DistributionName"
+    }
+    $version = ($output | Select-Object -Last 1).Trim()
+    if (-not $version) {
         return $null
     }
-    $versionLine = $output | Select-String "^Version:" | Select-Object -First 1
-    if ($null -eq $versionLine) {
-        return $null
-    }
-    return $versionLine.Line -replace "^Version:\s*", ""
+    return $version
 }
 
 function Install-ProjectDependencies {

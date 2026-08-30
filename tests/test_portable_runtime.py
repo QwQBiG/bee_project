@@ -28,3 +28,9 @@ def test_cuda_packages_are_pinned_to_matching_builds():
     assert "torch==2.13.0+cu132" in requirements
     assert "torchvision==0.28.0+cu132" in requirements
     assert "https://download.pytorch.org/whl/cu132" in setup
+
+
+def test_missing_package_check_does_not_use_pip_show_stderr():
+    setup = read_project_file("tools/prepare_portable_runtime.ps1").lower()
+    assert "-m pip show" not in setup
+    assert "importlib.metadata" in setup
