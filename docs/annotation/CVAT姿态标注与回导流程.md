@@ -56,6 +56,33 @@ CVAT 的骨架会显示连线和导出矩形框，但人工不需要另外画框
 
 若导入失败，不要重复创建项目或修改标签；记录页面错误信息并交由项目维护人员检查任务包。
 
+### 正式 60 帧任务包
+
+正式批次使用以下两个“单任务”上传包，不再直接上传同时含有 `train` 和 `val`
+的原始数据集包：
+
+- 巢外 30 帧：`datasets/official_work/diverse_60/cvat_upload_single_task/outside_pose_30_single_task.zip`
+- 巢内红外 30 帧：`datasets/official_work/diverse_60/cvat_upload_single_task/inside_pose_30_single_task.zip`
+
+CVAT 在项目层导入数据集时会为每个 subset 创建一个任务。单任务包把原始
+`train` 和 `val` 图片临时合并到一个 CVAT `train` subset，因此每个 ZIP 只创建
+一个任务。图片文件名没有变化，回导时仍使用原始任务包中的
+`annotation_map.json` 恢复真正的训练集和验证集归属，不会发生数据泄漏。
+
+导入步骤：
+
+1. 确认项目中的 `bee` 是 Skeleton 标签，并依次包含 `head`、`thorax`、
+   `abdomen_tip` 三个点；
+2. 在项目的 `Actions` 中选择 `Import dataset`；
+3. 格式选择 `Ultralytics YOLO Pose 1.0`；
+4. 先上传巢外包，成功后把新任务从 `train` 重命名为 `outside_pose_30`；
+5. 再上传巢内包，并重命名为 `inside_pose_30`；
+6. 确认两个任务各有 30 张图片后再开始标注。
+
+若出现 `label_categories`，应先检查项目标签是否确实为 Skeleton；项目数据集
+导入不能仅凭数据包中的类别名自动创建完整的三点骨架。不要通过反复修改图片
+路径或重复导入来绕过标签结构错误。
+
 ## 5. 每张图片怎么标
 
 打开 Job 后，按以下顺序处理当前图片：
@@ -132,6 +159,14 @@ python tools/prepare_pose_pilot_dataset.py `
 - 保留人工标出的头、胸、腹尖关键点；
 - 重新生成适合 YOLO Pose 训练的整蜂框；
 - 输出逐图数量和数据集元信息。
+
+正式 30 帧任务完成并复核后，可直接使用 CVAT 导出的 ZIP 和对应的原始任务
+ZIP 回导，不必手工解压 `annotation_map.json`：
+
+```powershell
+python tools/import_yolo_pose.py `
+  <CVAT导出的标注.zip> <原始train_val任务.zip> <统一JSON输出目录> --reviewed
+```
 
 ## 10. 金标准校验
 
