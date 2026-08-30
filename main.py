@@ -224,7 +224,7 @@ def run_demo():
     from pathlib import Path
     project_root = Path(__file__).parent
     dirs = ['configs', 'annotation', 'tracking', 'behavior', 'visualization', 
-            'inference', 'models', 'utils', 'datasets', 'docs']
+            'inference', 'models', 'utils', 'data', 'docs', 'tools', 'tests']
     for d in dirs:
         status = "[OK]" if (project_root / d).exists() else "[MISSING]"
         print(f"  {status} {d}/")

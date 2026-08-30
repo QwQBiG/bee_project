@@ -250,7 +250,7 @@ class BeePoseEstimator:
 class InsideHiveBeeDetector:
     """巢内蜜蜂检测器 - 针对红外图像优化"""
 
-    def __init__(self, model_path: str = "yolov8m.pt",
+    def __init__(self, model_path: str = "artifacts/models/honey_bee_detector_yolov8s.pt",
                  conf_threshold: float = 0.2,
                  iou_threshold: float = 0.45,
                  device: str = None,
@@ -331,7 +331,7 @@ class InsideHiveTracker:
 
         # 初始化检测器
         self.detector = InsideHiveBeeDetector(
-            model_path=config.get('model_path', 'yolov8m.pt'),
+            model_path=config.get('model_path', 'artifacts/models/honey_bee_detector_yolov8s.pt'),
             conf_threshold=config.get('conf_threshold', 0.2),
             iou_threshold=config.get('iou_threshold', 0.45),
             device=config.get('device', None),
@@ -623,7 +623,7 @@ def create_inside_tracker(config: Dict = None) -> InsideHiveTracker:
     """创建巢内跟踪器"""
     if config is None:
         config = {
-            'model_path': 'yolov8m.pt',
+            'model_path': 'artifacts/models/honey_bee_detector_yolov8s.pt',
             'conf_threshold': 0.2,
             'iou_threshold': 0.45,
             'device': None,

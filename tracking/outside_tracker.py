@@ -59,7 +59,7 @@ class TrackState:
 class OutsideHiveBeeDetector:
     """巢外蜜蜂检测器 - 基于YOLOv8"""
 
-    def __init__(self, model_path: str = "yolov8m.pt",
+    def __init__(self, model_path: str = "artifacts/models/hive_entrance_bee_yolov8n.pt",
                  conf_threshold: float = 0.25,
                  iou_threshold: float = 0.45,
                  device: str = None,
@@ -359,7 +359,7 @@ class OutsideHiveTracker:
 
         # 初始化检测器
         self.detector = OutsideHiveBeeDetector(
-            model_path=config.get('model_path', 'yolov8m.pt'),
+            model_path=config.get('model_path', 'artifacts/models/hive_entrance_bee_yolov8n.pt'),
             conf_threshold=config.get('conf_threshold', 0.25),
             iou_threshold=config.get('iou_threshold', 0.45),
             device=config.get('device', None),
@@ -526,7 +526,7 @@ def create_outside_tracker(config: Dict = None) -> OutsideHiveTracker:
     """
     if config is None:
         config = {
-            'model_path': 'yolov8m.pt',
+            'model_path': 'artifacts/models/hive_entrance_bee_yolov8n.pt',
             'conf_threshold': 0.25,
             'iou_threshold': 0.45,
             'device': None,
