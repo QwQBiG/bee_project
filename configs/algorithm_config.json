@@ -1,0 +1,20 @@
+{
+  "_comment": "Competition-standard inference config (SY-202601 §3.3).\n Place this file next to algorithm.exe after PyInstaller onedir compilation.\n 'model' paths are resolved relative to this config's directory (i.e. \n alongside the .exe). Weights must be exported with imgsz matching the \n scene (outside=1280, inside=640) — see models/trainer.py export_model().",
+  "detector": {
+    "outside": {
+      "model": "artifacts/models/hive_entrance_bee_yolov8n.onnx",
+      "imgsz": 1280,
+      "conf": 0.25,
+      "iou": 0.45,
+      "scene_hint": "outside"
+    },
+    "inside": {
+      "model": "artifacts/models/honey_bee_detector_yolov8s.onnx",
+      "imgsz": 640,
+      "conf": 0.25,
+      "iou": 0.45,
+      "scene_hint": "inside"
+    }
+  },
+  "labels": {"0": "bee"}
+}
