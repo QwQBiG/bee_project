@@ -22,34 +22,6 @@ inside_tracker:
   max_age: 30
   min_hits: 2
 
-## 模型配置
-model:
-  # 巢外可见光检测模型
-  outside_detector:
-    model_type: "yolov8"
-    model_size: "m"  # n, s, m, l, x
-    checkpoint: "yolov8m.pt"
-    input_size: 640
-    conf_threshold: 0.25
-    iou_threshold: 0.45
-    device: "cuda:0"
-
-  # 巢内红外检测模型
-  inside_detector:
-    model_type: "yolov8"
-    model_size: "m"
-    checkpoint: "yolov8m.pt"
-    input_size: 640
-    conf_threshold: 0.2
-    iou_threshold: 0.45
-    device: "cuda:0"
-
-  # 跟踪器配置
-  tracker:
-    type: "botsort"    # botsort, bytetrack；实际推理使用顶层 tracker_type
-    max_age: 30        # 最大丢失帧数
-    min_confidence: 0.3
-
 ## 数据配置
 data:
   # 巢外数据
