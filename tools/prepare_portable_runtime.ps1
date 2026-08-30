@@ -192,6 +192,7 @@ function Test-ProjectRuntime {
     $verificationCode = @'
 import json
 import cv2
+import lap
 import matplotlib
 import numpy
 import pandas
@@ -200,6 +201,8 @@ import torch
 import torchvision
 import ultralytics
 import yaml
+
+lap.lapjv(numpy.array([[0.0, 1.0], [1.0, 0.0]]))
 
 cuda_available = bool(torch.cuda.is_available())
 device_name = torch.cuda.get_device_name(0) if cuda_available else None

@@ -4,6 +4,7 @@
 torch==2.13.0+cu132
 torchvision==0.28.0+cu132
 ultralytics>=8.0.0
+lap==0.5.13
 
 # 视频、数值计算与报告
 opencv-python>=4.8.0
