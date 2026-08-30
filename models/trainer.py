@@ -175,32 +175,134 @@ class YOLOTrainer:
         
         return results
     
-    def validate(self, weights_path: str, data_yaml: str) -> Dict:
-        """验证模型"""
+    def validate(self, weights_path: str, data_yaml: str,
+                 task: str = "detect") -> Dict:
+        """验证模型 (检测或姿态).
+
+        ``task`` must be ``detect`` or ``pose``; for pose the returned
+        metrics additionally include ``pose_mAP50`` / ``pose_mAP50-95``.
+        """
         try:
             from ultralytics import YOLO
         except ImportError:
             return {}
-        
-        model = YOLO(weights_path)
-        results = model.val(data=data_yaml, device=self.device)
-        
-        return {
-            'mAP50': float(results.box.map50),
-            'mAP50-95': float(results.box.map),
-            'precision': float(results.box.mp),
-            'recall': float(results.box.mr)
+
+        model = YOLO(weights_path, task=task)
+        results = model.val(data=data_yaml, device=self.device, verbose=False)
+
+        out = {
+            'mAP50': float(getattr(results.box, "map50", 0.0) or 0.0),
+            'mAP50-95': float(getattr(results.box, "map", 0.0) or 0.0),
+            'precision': float(getattr(results.box, "mp", 0.0) or 0.0),
+            'recall': float(getattr(results.box, "mr", 0.0) or 0.0),
         }
-    
+        if task == "pose" and hasattr(results, "keypoints"):
+            out['pose_mAP50'] = float(getattr(results.keypoints, "map50", 0.0) or 0.0)
+            out['pose_mAP50-95'] = float(getattr(results.keypoints, "map", 0.0) or 0.0)
+        return out
+
+    def train_pose(self,
+                   data_yaml: str,
+                   base_model: str = "yolov8n-pose.pt",
+                   checkpoint_dir: str = "checkpoints",
+                   run_name: str = "bee_pose",
+                   imgsz: int = 640):
+        """Fine-tune an Ultralytics YOLO pose model (kpt_shape in data.yaml).
+
+        The caller must feed a YOLO-pose ``data.yaml`` whose ``kpt_shape``
+        matches the task (for this project it is ``[3, 3]``: head / thorax
+        / abdomen_tip).  The method picks imgsz=1280 for hive-entrance
+        (outside) and imgsz=640 for inside IR by convention; pass a value
+        to override.
+        """
+        try:
+            from ultralytics import YOLO
+        except ImportError as exc:
+            print(f"Error: ultralytics not installed ({exc}).")
+            return None
+
+        model = YOLO(base_model)
+        if getattr(model, "task", None) != "pose":
+            raise ValueError(
+                f"{base_model} is not a YOLO pose backbone (task="
+                f"{getattr(model, 'task', None)})")
+
+        ckpt = Path(checkpoint_dir)
+        ckpt.mkdir(parents=True, exist_ok=True)
+        results = model.train(
+            data=data_yaml,
+            epochs=self.epochs,
+            batch=self.batch_size,
+            lr0=self.learning_rate,
+            weight_decay=self.weight_decay,
+            device=self.device,
+            imgsz=imgsz,
+            project=str(ckpt),
+            name=run_name,
+            exist_ok=True,
+            verbose=True,
+        )
+        best = ckpt / run_name / "weights" / "best.pt"
+        if best.exists():
+            print(f"[train_pose] best weights saved to {best}")
+        return results
+
+    def train_detection_task(self,
+                             data_yaml: str,
+                             scene: str = "outside",
+                             checkpoint_dir: str = "checkpoints",
+                             base_model: str = "yolov8m.pt") -> object:
+        """Train a scene-aware detector with the right imgsz default.
+
+        ``scene``:
+          - ``outside`` → hive entrance / visible light, imgsz=1280
+          - ``inside``  → hive interior / infrared,       imgsz=640
+        """
+        scene = scene.lower()
+        if scene not in {"outside", "inside"}:
+            raise ValueError(f"scene must be 'outside' or 'inside', got {scene!r}")
+        imgsz = 1280 if scene == "outside" else 640
+        run_name = f"bee_det_{scene}"
+        try:
+            from ultralytics import YOLO
+        except ImportError as exc:
+            print(f"Error: ultralytics not installed ({exc}).")
+            return None
+
+        model = YOLO(base_model)
+        ckpt = Path(checkpoint_dir)
+        ckpt.mkdir(parents=True, exist_ok=True)
+        results = model.train(
+            data=data_yaml,
+            epochs=self.epochs,
+            batch=self.batch_size,
+            lr0=self.learning_rate,
+            weight_decay=self.weight_decay,
+            device=self.device,
+            imgsz=imgsz,
+            project=str(ckpt),
+            name=run_name,
+            exist_ok=True,
+            verbose=True,
+        )
+        best = ckpt / run_name / "weights" / "best.pt"
+        if best.exists():
+            print(f"[train_detection_task] scene={scene} saved {best}")
+        return results
+
     def export_model(self, weights_path: str, 
                     export_format: str = 'onnx',
-                    output_dir: str = 'exports'):
-        """导出模型
-        
-        Args:
-            weights_path: 权重文件路径
-            export_format: 导出格式 (onnx, torchscript, coreml等)
-            output_dir: 输出目录
+                    output_dir: str = 'exports',
+                    imgsz: int = 640,
+                    opset: int = 12,
+                    simplify: bool = True,
+                    dynamic: bool = False):
+        """导出模型（带正确 imgsz/opset/simplify 参数，默认 match 蜂巢场景）。
+
+        The ``imgsz`` must match the training size; for hive-entrance
+        detectors pass 1280, inside-IR pass 640.  Leaving it at the 640
+        default used to produce mismatched ONNX input shapes — this was
+        the key reason the old export helper could not be reused directly.
         """
         try:
             from ultralytics import YOLO
@@ -212,8 +314,14 @@ class YOLOTrainer:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        exported_path = model.export(format=export_format, 
-                                     project=str(output_dir))
+        exported_path = model.export(
+            format=export_format,
+            project=str(output_dir),
+            imgsz=imgsz,
+            opset=opset,
+            simplify=simplify,
+            dynamic=dynamic,
+        )
         
         print(f"模型已导出到: {exported_path}")
         return exported_path
