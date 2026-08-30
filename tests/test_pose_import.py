@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
@@ -56,6 +57,35 @@ class PoseImportTests(unittest.TestCase):
     def test_rejects_wrong_field_count(self):
         with self.assertRaisesRegex(ValueError, "字段数"):
             parse_pose_row("0 0.5 0.5 0.2", 100, 100, ["bee"], 0, 0)
+
+    def test_accepts_original_task_zip_as_mapping_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            frames = root / "frames" / "video-1"
+            frames.mkdir(parents=True)
+            (frames / "frame_00000000.jpg").write_bytes(b"image")
+            annotation = VideoAnnotation(
+                video_id="video-1", source_path="raw.mp4", scene="outside_entrance",
+                width=100, height=100, fps=25.0, frame_count=1,
+                frames=[FrameAnnotation(0, 0.0, [BeeInstance(
+                    "bee-1", [10, 10, 40, 20], keypoints=[
+                        Keypoint("head", 45, 20, 2),
+                        Keypoint("thorax", 30, 20, 2),
+                        Keypoint("abdomen_tip", 15, 20, 2),
+                    ],
+                )])], metadata={"split": "train"})
+            source = annotation.save(root / "annotations" / "video-1.json")
+            export_root = root / "export"
+            export_annotations([source], root / "frames", export_root)
+            task_zip = Path(shutil.make_archive(
+                str(root / "original_task"), "zip", root_dir=export_root))
+
+            summary = import_dataset(
+                export_root, task_zip, root / "imported", reviewed=True)
+
+            self.assertEqual({"videos": 1, "frames": 1, "instances": 1}, summary)
+            imported = VideoAnnotation.load(root / "imported" / "video-1.json")
+            self.assertEqual("manual", imported.frames[0].instances[0].source)
 
 
 if __name__ == "__main__":

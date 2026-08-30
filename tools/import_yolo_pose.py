@@ -9,11 +9,33 @@ import shutil
 import sys
 import tempfile
 from typing import Dict, List
+import zipfile
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from annotation.schema import BeeInstance, FrameAnnotation, Keypoint, KEYPOINT_NAMES, VideoAnnotation
+
+
+def load_mapping(source: Path) -> Dict:
+    """从 JSON、任务目录或原始任务 ZIP 中读取 annotation_map.json。"""
+    if source.is_file() and source.suffix.lower() == ".json":
+        return json.loads(source.read_text(encoding="utf-8"))
+    if source.is_file() and source.suffix.lower() == ".zip":
+        with zipfile.ZipFile(source) as archive:
+            matches = [name for name in archive.namelist()
+                       if Path(name).name == "annotation_map.json"]
+            if len(matches) != 1:
+                raise ValueError(
+                    f"任务 ZIP 中应有且仅有一个 annotation_map.json，实际为 {len(matches)} 个")
+            return json.loads(archive.read(matches[0]).decode("utf-8"))
+    if source.is_dir():
+        matches = sorted(source.rglob("annotation_map.json"))
+        if len(matches) != 1:
+            raise ValueError(
+                f"任务目录中应有且仅有一个 annotation_map.json，实际为 {len(matches)} 个")
+        return json.loads(matches[0].read_text(encoding="utf-8"))
+    raise FileNotFoundError(f"找不到任务映射文件、目录或 ZIP: {source}")
 
 
 def parse_pose_row(line: str, width: int, height: int, classes: List[str],
@@ -56,7 +78,7 @@ def parse_pose_row(line: str, width: int, height: int, classes: List[str],
 
 def import_dataset(dataset_root: Path, mapping_path: Path, output_root: Path,
                    reviewed: bool = False) -> Dict:
-    mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
+    mapping = load_mapping(mapping_path)
     classes = [str(item) for item in mapping["classes"]]
     videos = mapping.get("videos", {})
     images = mapping.get("images", {})
@@ -114,7 +136,8 @@ def import_dataset(dataset_root: Path, mapping_path: Path, output_root: Path,
 def main() -> int:
     parser = argparse.ArgumentParser(description="导入 CVAT YOLO Pose 标注")
     parser.add_argument("dataset", help="CVAT 导出的目录或 ZIP")
-    parser.add_argument("mapping", help="任务包中的 annotation_map.json")
+    parser.add_argument(
+        "mapping", help="任务包中的 annotation_map.json、解压目录或原始任务 ZIP")
     parser.add_argument("output", help="统一 JSON 输出目录")
     parser.add_argument("--reviewed", action="store_true",
                         help="仅在任务已完成人工标注和复核后使用；否则保持非金标准来源")
