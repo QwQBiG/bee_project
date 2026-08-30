@@ -26,7 +26,7 @@ def test_imports():
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = yaml.safe_load(f)
             print(f"  [OK] 配置文件加载成功")
-            print(f"       - 巢外检测模型: {config.get('model', {}).get('outside_detector', {}).get('model_type', 'N/A')}")
+            print(f"       - 巢外检测权重: {config.get('outside_tracker', {}).get('model_path', 'N/A')}")
             print(f"       - 跟踪器类型: {config.get('outside_tracker', {}).get('tracker_type', 'N/A')}")
         else:
             print(f"  [WARN] 配置文件不存在")
@@ -88,7 +88,7 @@ def test_config_files():
     with open(config_file, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
     
-    required_sections = ['model', 'data', 'training', 'behavior', 'visualization', 'inference']
+    required_sections = ['outside_tracker', 'inside_tracker', 'data', 'training', 'behavior', 'visualization', 'inference']
     
     for section in required_sections:
         if section in config:
@@ -96,14 +96,11 @@ def test_config_files():
         else:
             print(f"  [WARN] 缺少配置节: {section}")
     
-    # 检查关键配置项
-    model_config = config.get('model', {})
-    if 'outside_detector' in model_config:
+    # 检查关键配置项（实际推理使用的顶层跟踪器段）
+    if 'outside_tracker' in config:
         print(f"  [OK] 巢外检测器配置存在")
-    if 'inside_detector' in model_config:
+    if 'inside_tracker' in config:
         print(f"  [OK] 巢内检测器配置存在")
-    if 'tracker' in model_config:
-        print(f"  [OK] 跟踪器配置存在")
     
     print()
 
