@@ -20,6 +20,25 @@ names:
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png"}
 
 
+def _validate_pose_fields(fields: list[str], source_name: str,
+                          line_number: int) -> None:
+    if len(fields) not in {14, 15}:
+        raise ValueError(f"{source_name}:{line_number} 不是 YOLO Pose 标签")
+    try:
+        values = [float(value) for value in fields]
+    except ValueError as error:
+        raise ValueError(
+            f"{source_name}:{line_number} 包含非数字字段") from error
+    visibility = values[7:14:3]
+    if any(value not in {0.0, 1.0, 2.0} for value in visibility):
+        raise ValueError(
+            f"{source_name}:{line_number} 的关键点可见性只能是 0、1 或 2")
+    if not any(value > 0 for value in visibility):
+        raise ValueError(
+            f"{source_name}:{line_number} 三个关键点全部不可见；"
+            "这是检测框，不是真实姿态预标注")
+
+
 def _normalize_lf(data: bytes) -> bytes:
     text = data.decode("utf-8-sig").replace("\r\n", "\n").replace("\r", "\n")
     if text and not text.endswith("\n"):
@@ -79,8 +98,7 @@ def build_single_task_archive(source: Path, output: Path,
                 if not line.strip():
                     continue
                 fields = line.split()
-                if len(fields) not in {14, 15}:
-                    raise ValueError(f"{source_name}:{line_number} 不是 YOLO Pose 标签")
+                _validate_pose_fields(fields, source_name, line_number)
                 rows += 1
             normalized_labels[name] = data
 
@@ -88,7 +106,7 @@ def build_single_task_archive(source: Path, output: Path,
         with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as target:
             target.writestr("data.yaml", DATA_YAML.encode("utf-8"))
             train_lines = "".join(
-                f"images/train/{name}\n" for name in sorted(images))
+                f"./images/train/{name}\n" for name in sorted(images))
             target.writestr("train.txt", train_lines.encode("utf-8"))
             for name in sorted(images):
                 target.writestr(f"images/train/{name}", archive.read(images[name]))

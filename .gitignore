@@ -49,13 +49,60 @@ tmp/
 temp/
 *.tmp
 
-# Ultralytics 缓存
+# Ultralytics 全局配置目录（沙箱下重定向到 %TEMP%，本机配置不提交）
 .ultralytics/
 
-# 视频数据（过大，不提交）
-data/**/*.mp4
-data/**/*.avi
-data/**/*.mov
+# Ultralytics 训练输出（含大图/权重/results）
+runs/
+
+# 大视频文件（任意深度）
+**/*.mp4
+**/*.avi
+**/*.mov
+**/*.mkv
+
+# 标注打包 zip（过大且含图片复本，不重复分发；由 tools/pick_easy_label_images.py 重生成）
+datasets/label_tasks*/easy_label_*.zip
+
+# 标注样例图（由 tools/render_label_examples.py 生成）作为文档插图 -> 例外提交
+# _EXAMPLE_*.png 保留（不忽略），仅忽略 jpg/png 原始照片批量文件
+
+# 训练输出的伪标签 YOLO 数据集（由 tools/auto_label_detection.py 可重生成，不提交图片本体）
+datasets/yolo_*/images/
+datasets/yolo_*/labels/
+datasets/mendeley_bee_pose_v6/images/
+datasets/mendeley_bee_pose_v6/labels/
+
+# 临时草稿 / smoke 脚本（仅本地用）
+_tmp_*.py
+_tmp_*.ps1
+
+# 外部 apic-pose 数据集图片（体积大，CC BY 源可重下）
+datasets/official_work/external_sources/apic-bee-pose-dataset/data/pose/*.png
+
+# 官方工作目录下的 jpg/png 原帧（比赛专有，不重新分发）——任意子目录
+datasets/official_work/diverse_60/**/*.jpg
+datasets/official_work/diverse_60/**/*.png
+datasets/official_work/easy_pose_seed_20260830/preview/**/*.jpg
+datasets/official_work/easy_pose_seed_20260830/preview/**/*.png
+
+# easy_label 人工标注任务包里的比赛专有原帧（不重新分发，含任意子目录层级）
+datasets/label_tasks*/**/*.jpg
+datasets/label_tasks*/**/*.jpeg
+# 注意：不要把 label_tasks* 下的 png 一刀切忽略 —— _EXAMPLE_*.png 是工具生成的中文样例示意图
+# （不含比赛专有像素/只是本地规则叠层），作为文档插图要反例外提交
+datasets/label_tasks*/**/*.png
+!datasets/label_tasks*/**/_EXAMPLE_*.png
+
+# 同时把 easy_label_outside/inside 的图片文件夹（递归整目录）直接列在末尾兜底
+# 防止上面的 glob 写法在 Windows git 里出意外
+datasets/label_tasks*/easy_label_*outside*/
+datasets/label_tasks*/easy_label_*inside*/
+# 但其中的 README.txt 和 index.csv（元数据索引，不包含图片）反例外保留：
+!datasets/label_tasks*/easy_label_*outside*/README.txt
+!datasets/label_tasks*/easy_label_*outside*/index.csv
+!datasets/label_tasks*/easy_label_*inside*/README.txt
+!datasets/label_tasks*/easy_label_*inside*/index.csv
 
 # 系统文件
 Thumbs.db

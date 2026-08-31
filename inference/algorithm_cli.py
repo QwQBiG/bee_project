@@ -92,7 +92,7 @@ def load_runtime_config(explicit: Optional[str] = None) -> Dict[str, Any]:
         if not path.is_file():
             raise FileNotFoundError(404, f"config not found: {path}")
     else:
-        hits = _default_config_search_paths(prog)
+        hits = _default_search_paths(prog)
         if not hits:
             raise FileNotFoundError(404, (
                 f"missing {DEFAULT_CONFIG_BASENAME}; expected next to "
@@ -210,23 +210,30 @@ def multiclass_nms(
     x2, y2 = boxes[:, 0] + boxes[:, 2], boxes[:, 1] + boxes[:, 3]
     areas = (x2 - x1) * (y2 - y1)
     keep: List[int] = []
+    # order here is indices inside the already-filtered (boxes, scores).
+    order = np.arange(boxes.shape[0], dtype=np.int64)
     while order.size > 0:
-        i = order[0]
-        keep.append(int(i))
-        xx1 = np.maximum(x1[i], x1[order[1:]])
-        yy1 = np.maximum(y1[i], y1[order[1:]])
-        xx2 = np.minimum(x2[i], x2[order[1:]])
-        yy2 = np.minimum(y2[i], y2[order[1:]])
+        i = int(order[0])
+        keep.append(i)
+        if order.size == 1:
+            break
+        rest = order[1:]
+        xx1 = np.maximum(x1[i], x1[rest])
+        yy1 = np.maximum(y1[i], y1[rest])
+        xx2 = np.minimum(x2[i], x2[rest])
+        yy2 = np.minimum(y2[i], y2[rest])
         ww = np.maximum(0.0, xx2 - xx1)
         hh = np.maximum(0.0, yy2 - yy1)
         inter = ww * hh
-        ovr = inter / (areas[i] + areas[order[1:]] - inter + 1e-12)
+        ovr = inter / (areas[i] + areas[rest] - inter + 1e-12)
         inds = np.where(ovr <= iou_threshold)[0]
-        order = order[inds + 1]
-    return np.stack([
-        boxes[keep][:, 0], boxes[keep][:, 1], boxes[keep][:, 2],
-        boxes[keep][:, 3], scores[keep],
-    ], axis=1)
+        order = rest[inds]
+    kept_boxes = boxes[keep]
+    kept_scores = scores[keep]
+    return np.concatenate(
+        [kept_boxes, kept_scores[:, np.newaxis].astype(np.float32)],
+        axis=1,
+    ).astype(np.float32)
 
 
 # ---------------------------------------------------------------------------
@@ -322,21 +329,22 @@ def run_detection(image_path: Path, config: Dict[str, Any]) \
     cls_scores = pred[:, 4:].max(axis=1)
     cls_ids = pred[:, 4:].argmax(axis=1)
     keep = multiclass_nms(cx_cy_w_h, cls_scores, iou_thr, conf_thr)
-    boxes = scale_boxes(keep[:, :4], ratio_pad, raw.shape[:2])
+    keep_boxes = keep[:, :4]
+    raw_scores = keep[:, 4].copy() if keep.size else np.empty((0,), dtype=np.float32)
+    boxes = scale_boxes(keep_boxes, ratio_pad, raw.shape[:2])
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     label_map = config.get("labels", {"0": "bee"})
     out: List[Dict[str, Any]] = []
-    for row, class_id_f in zip(boxes, cls_ids[keep[:, 4].astype(np.int32)]
-                               if len(keep) else []):
+    # scale_boxes keeps xywh rows; attach the matched score column from NMS.
+    for row, conf in zip(boxes, raw_scores):
         x, y, w, h = [float(v) for v in row[:4]]
-        conf = float(row[4])
-        cid = int(class_id_f) if False else 0  # single-class → id=0
+        cid = 0
         out.append({
             "bbox": [round(x, 2), round(y, 2), round(w, 2), round(h, 2)],
             "label": label_map.get(str(cid), "bee"),
             "class_id": cid,
-            "confidence": round(conf, 6),
+            "confidence": round(float(conf), 6),
         })
     return out, elapsed_ms
 

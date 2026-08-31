@@ -40,7 +40,7 @@ class CvatPoseUploadTests(unittest.TestCase):
                 self.assertNotIn(b"\r", archive.read("data.yaml"))
                 self.assertNotIn(b"\r", archive.read("labels/train/bee-a.txt"))
                 self.assertEqual(
-                    ["images/train/bee-a.jpg", "images/train/bee-b.jpg"],
+                    ["./images/train/bee-a.jpg", "./images/train/bee-b.jpg"],
                     archive.read("train.txt").decode("utf-8").splitlines())
 
     def test_rejects_duplicate_names_across_subsets(self):
@@ -51,6 +51,19 @@ class CvatPoseUploadTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "文件名重复"):
                 build_single_task_archive(source, root / "upload.zip")
+
+    def test_rejects_detection_box_disguised_as_pose(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, output = root / "source.zip", root / "upload.zip"
+            with zipfile.ZipFile(source, "w") as archive:
+                archive.writestr("images/train/bee.jpg", b"image")
+                archive.writestr(
+                    "labels/train/bee.txt",
+                    "0 0.5 0.5 0.2 0.2 0 0 0 0 0 0 0 0 0\n")
+
+            with self.assertRaisesRegex(ValueError, "不是真实姿态预标注"):
+                build_single_task_archive(source, output)
 
 
 if __name__ == "__main__":
