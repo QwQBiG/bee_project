@@ -36,6 +36,28 @@ class CocoMapMotStatsTest(unittest.TestCase):
         # IoU is exactly 1.0 for the loose thresholds.
         self.assertGreater(out["map_50_95"], 0.0)
 
+    def test_map_uses_confidence_ranked_precision_recall_curve(self):
+        from tools.evaluate_vnbee_tracking import compute_map50_95
+        gt = {1: [{"track_id": 1, "bbox": [10, 10, 20, 20]}]}
+        false_positive = {"bbox": [100, 100, 20, 20], "confidence": 0.95}
+        true_positive = {"bbox": [10, 10, 20, 20], "confidence": 0.90}
+        bad_order = compute_map50_95(
+            gt, {1: [false_positive, true_positive]}, thresholds=[0.5])
+        good_order = compute_map50_95(
+            gt, {1: [dict(false_positive, confidence=0.80),
+                     true_positive]}, thresholds=[0.5])
+        self.assertAlmostEqual(bad_order["ap_50"], 0.5, places=6)
+        self.assertAlmostEqual(good_order["ap_50"], 1.0, places=6)
+
+    def test_duplicate_predictions_do_not_match_one_gt_twice(self):
+        from tools.evaluate_vnbee_tracking import compute_map50_95
+        gt = {1: [{"track_id": 1, "bbox": [10, 10, 20, 20]}]}
+        prediction = {"bbox": [10, 10, 20, 20], "confidence": 0.9}
+        out = compute_map50_95(
+            gt, {1: [prediction, dict(prediction, confidence=0.8)]},
+            thresholds=[0.5])
+        self.assertAlmostEqual(out["ap_50"], 1.0, places=6)
+
     def test_mot_track_stats_split_by_coverage_ratio(self):
         from tools.evaluate_vnbee_tracking import compute_mot_track_stats
         # 5 trajectories of 10 frames each.

@@ -4,6 +4,7 @@
 
 ## 使用与部署
 
+- [比赛提交接口与收尾清单（2026-09）](competition/提交接口与收尾清单_202609.md)
 - [快速开始](guides/DEMO_QUICKSTART.md)
 - [项目说明书](guides/说明书.md)
 - [原始视频接入流程](guides/原始视频接入流程.md)

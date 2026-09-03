@@ -10,17 +10,6 @@ from pathlib import Path
 import json
 import time
 
-from tracking.outside_tracker import OutsideHiveTracker, create_outside_tracker
-from tracking.inside_tracker import InsideHiveTracker, create_inside_tracker, InsideHiveAnalyzer
-from behavior.quantifier import BehaviorQuantifier, create_behavior_quantifier
-from behavior.inside_metrics import InsideHiveMetricsAnalyzer
-from behavior.entrance_adapter import TrackEntranceAnalyzer
-from behavior.outside_pollen import OutsidePollenAnalyzer
-from behavior.trajectory_metrics import TrajectoryMetricsAnalyzer
-from inference.keypoint_pose import KeypointPoseEstimator
-from visualization.visualizer import create_visualizer, VideoAnnotator
-
-
 def verified_pose_distribution(analyzer, tracks, pose_enabled: bool):
     """仅在关键点姿态模型启用时生成方向分布，防止几何启发式冒充头尾。"""
     if not pose_enabled:
@@ -32,6 +21,13 @@ class OutsideHiveProcessor:
     """巢外视频处理器"""
     
     def __init__(self, config: Dict):
+        from behavior.entrance_adapter import TrackEntranceAnalyzer
+        from behavior.outside_pollen import OutsidePollenAnalyzer
+        from behavior.quantifier import create_behavior_quantifier
+        from behavior.trajectory_metrics import TrajectoryMetricsAnalyzer
+        from tracking.outside_tracker import create_outside_tracker
+        from visualization.visualizer import create_visualizer
+
         self.config = config
         
         # 初始化跟踪器（优先使用 outside_tracker 配置，兼容单 tracker 配置）
@@ -205,6 +201,13 @@ class InsideHiveProcessor:
     """巢内视频处理器"""
     
     def __init__(self, config: Dict):
+        from behavior.inside_metrics import InsideHiveMetricsAnalyzer
+        from behavior.quantifier import create_behavior_quantifier
+        from behavior.trajectory_metrics import TrajectoryMetricsAnalyzer
+        from inference.keypoint_pose import KeypointPoseEstimator
+        from tracking.inside_tracker import InsideHiveAnalyzer, create_inside_tracker
+        from visualization.visualizer import create_visualizer
+
         self.config = config
         
         # 初始化跟踪器

@@ -275,7 +275,9 @@ def _get_session(model_path: Path, imgsz: int, config_dir: str) -> Tuple[Any, in
     return sess, imgsz
 
 
-def run_detection(image_path: Path, config: Dict[str, Any]) \
+def run_detection(image_path: Path, config: Dict[str, Any], *,
+                  conf_override: Optional[float] = None,
+                  topk: int = 300) \
         -> Tuple[List[Dict[str, Any]], int]:
     """Return (detections_list, processing_time_ms)."""
     import cv2  # type: ignore
@@ -303,7 +305,8 @@ def run_detection(image_path: Path, config: Dict[str, Any]) \
 
     model_rel = Path(det_cfg["model"])
     imgsz = int(det_cfg.get("imgsz", 640))
-    conf_thr = float(det_cfg.get("conf", 0.25))
+    conf_thr = (float(conf_override) if conf_override is not None else
+                float(det_cfg.get("conf", 0.25)))
     iou_thr = float(det_cfg.get("iou", 0.45))
     config_dir = config["_config_dir"]
 
@@ -328,7 +331,8 @@ def run_detection(image_path: Path, config: Dict[str, Any]) \
     cx_cy_w_h = pred[:, :4]
     cls_scores = pred[:, 4:].max(axis=1)
     cls_ids = pred[:, 4:].argmax(axis=1)
-    keep = multiclass_nms(cx_cy_w_h, cls_scores, iou_thr, conf_thr)
+    keep = multiclass_nms(
+        cx_cy_w_h, cls_scores, iou_thr, conf_thr, topk=topk)
     keep_boxes = keep[:, :4]
     raw_scores = keep[:, 4].copy() if keep.size else np.empty((0,), dtype=np.float32)
     boxes = scale_boxes(keep_boxes, ratio_pad, raw.shape[:2])

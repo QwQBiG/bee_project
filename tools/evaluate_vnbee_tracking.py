@@ -21,9 +21,6 @@ import yaml
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from tracking.outside_tracker import OutsideHiveTracker
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--video", required=True)
@@ -98,41 +95,48 @@ def match_frame(gt_rows: List[dict], predictions: List[dict], threshold: float):
 IOU_THRESHOLDS_COCO = [round(0.5 + i * 0.05, 2) for i in range(10)]  # 0.50..0.95
 
 
-def _precision_recall_at_threshold(gt_by_frame, pred_by_frame, threshold):
-    """Returns precision, recall at a single IoU threshold over all frames."""
-    tp = fp = fn = 0
-    for frame_id in sorted(set(gt_by_frame) | set(pred_by_frame)):
-        matches, um_gt, um_pred = match_frame(
-            gt_by_frame.get(frame_id, []),
-            pred_by_frame.get(frame_id, []),
-            threshold,
-        )
-        tp += len(matches)
-        fn += len(um_gt)
-        fp += len(um_pred)
-    denom_p = tp + fp
-    denom_r = tp + fn
-    p = tp / denom_p if denom_p else 0.0
-    r = tp / denom_r if denom_r else 0.0
-    return p, r
-
-
 def _single_class_ap(recalls: List[float], precisions: List[float]) -> float:
     """COCO-style 101-point interpolated average precision."""
-    # Pad the PR curve to reach (r=0, p=1) ... (r=1, p=0).
-    rs = [0.0] + list(recalls) + [1.0]
-    ps = [0.0] + list(precisions) + [0.0]
-    # Make precisions monotonically decreasing.
-    for idx in range(len(ps) - 2, -1, -1):
-        ps[idx] = max(ps[idx], ps[idx + 1])
-    # Sum the integral over the 101 standard recall points.
-    ap = 0.0
-    points = np.linspace(0.0, 1.0, 101)
-    for rho in points:
-        # Find the smallest r in rs that is >= rho; use its p.
-        candidates = [ps[i] for i, r in enumerate(rs) if r >= rho]
-        ap += max(candidates or [0.0]) / 101.0
-    return ap
+    if not recalls:
+        return 0.0
+    return float(np.mean([
+        max((precision for recall, precision in zip(recalls, precisions)
+             if recall >= recall_level), default=0.0)
+        for recall_level in np.linspace(0.0, 1.0, 101)
+    ]))
+
+
+def _ranked_pr_curve(gt_by_frame, pred_by_frame, threshold):
+    """Match score-ranked predictions to unused GT boxes frame by frame."""
+    total_gt = sum(len(rows) for rows in gt_by_frame.values())
+    if total_gt == 0:
+        return [], []
+    ranked = sorted(
+        ((float(pred.get("confidence", 1.0)), frame_id, pred)
+         for frame_id, rows in pred_by_frame.items() for pred in rows),
+        key=lambda item: -item[0],
+    )
+    matched = defaultdict(set)
+    true_positives = false_positives = 0
+    recalls: List[float] = []
+    precisions: List[float] = []
+    for _, frame_id, prediction in ranked:
+        best_index, best_iou = None, -1.0
+        for index, ground_truth in enumerate(gt_by_frame.get(frame_id, [])):
+            if index in matched[frame_id]:
+                continue
+            overlap = iou_xywh(ground_truth["bbox"], prediction["bbox"])
+            if overlap > best_iou:
+                best_index, best_iou = index, overlap
+        if best_index is not None and best_iou >= threshold:
+            matched[frame_id].add(best_index)
+            true_positives += 1
+        else:
+            false_positives += 1
+        recalls.append(true_positives / total_gt)
+        precisions.append(
+            true_positives / (true_positives + false_positives))
+    return recalls, precisions
 
 
 def compute_map50_95(
@@ -142,25 +146,16 @@ def compute_map50_95(
 ) -> Dict[str, float]:
     """Return per-threshold AP plus the mAP50-95 mean (COCO primary metric).
 
-    Each detection dict in ``det_by_frame`` is expected to also carry a
-    ``confidence`` field; when absent a constant 1.0 is used and the
-    returned curve becomes a single-point PR estimate.
+    Each detection dict in ``det_by_frame`` should carry a ``confidence``
+    field. Predictions are globally score-ranked and matched one-to-one to
+    ground truth independently at every IoU threshold.
     """
     aps = {}
-    all_recalls, all_precisions = [], []
     for t in thresholds:
-        p, r = _precision_recall_at_threshold(gt_by_frame, det_by_frame, t)
-        # Use a two-point PR curve without score ranking; this remains a
-        # valid dependency-free upper-bound for AP and matches the
-        # competition rule "mAP@0.5:0.95" numerically enough for local
-        # progress tracking against the officially required thresholds
-        # (outside ≥0.50, inside ≥0.40 for 1-3 points).
-        recalls = [0.0, r, 1.0]
-        precisions = [1.0, p, 0.0]
+        recalls, precisions = _ranked_pr_curve(
+            gt_by_frame, det_by_frame, t)
         ap = _single_class_ap(recalls, precisions)
         aps[f"ap_{t:.2f}"] = ap
-        all_recalls.append(r)
-        all_precisions.append(p)
     aps["ap_50"] = aps.get("ap_0.50", 0.0)
     aps["ap_75"] = aps.get("ap_0.75", 0.0)
     aps["map_50_95"] = float(np.mean(list(aps[f"ap_{t:.2f}"] for t in thresholds)))
@@ -225,6 +220,11 @@ def build_tracker_config(config_path: str, tracker_type: str) -> dict:
 
 
 def evaluate(args: argparse.Namespace) -> dict:
+    # Keep metric helpers importable in lightweight/offline environments.
+    # Ultralytics and its writable settings directory are only required when
+    # an actual video evaluation starts.
+    from tracking.outside_tracker import OutsideHiveTracker
+
     ground_truth = load_ground_truth(args.gt)
     config = build_tracker_config(args.config, args.tracker)
     tracker = OutsideHiveTracker(config)
