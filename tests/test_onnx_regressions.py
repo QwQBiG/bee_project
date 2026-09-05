@@ -58,3 +58,47 @@ def test_invalid_payload_preserves_previous_result(tmp_path):
     with pytest.raises(ValueError):
         write_result(destination, {"bad": float("nan")})
     assert json.loads(destination.read_text(encoding="utf-8")) == {"ok": 1}
+
+
+def test_multiclass_requires_explicit_mapping_and_excludes_other_classes(monkeypatch):
+    from types import SimpleNamespace
+    output = np.array([[[50], [50], [20], [20], [.2], [.9]]], dtype=np.float32)
+    session = SimpleNamespace(
+        get_inputs=lambda: [SimpleNamespace(name="images", shape=[1, 3, 100, 100])],
+        get_modelmeta=lambda: SimpleNamespace(custom_metadata_map={
+            "task": "detect", "names": "{0: 'bee', 1: 'mite'}"}),
+        run=lambda *args: [output])
+    monkeypatch.setattr(cli, "_get_session", lambda *args: (session, 100))
+    cfg = {"_scene": "outside", "_config_dir": ".", "detector": {
+        "outside": {"model": "test.onnx", "imgsz": 100}}}
+    image = np.zeros((100, 100, 3), np.uint8)
+    with pytest.raises(ValueError, match="class_ids"):
+        cli.run_detection_array(image, cfg)
+    cfg["detector"]["outside"]["class_ids"] = [0]
+    rows, _ = cli.run_detection_array(image, cfg, conf_override=0)
+    assert rows[0]["confidence"] == pytest.approx(.2)
+    assert rows[0]["class_id"] == 0
+    assert cli.run_detection_array(image, cfg, conf_override=.25)[0] == []
+
+
+def test_pose_metadata_cannot_be_used_as_detection(monkeypatch):
+    from types import SimpleNamespace
+    session = SimpleNamespace(
+        get_inputs=lambda: [SimpleNamespace(name="images", shape=[1, 3, 100, 100])],
+        get_modelmeta=lambda: SimpleNamespace(custom_metadata_map={"task": "pose"}),
+        run=lambda *args: [np.zeros((1, 14, 2), dtype=np.float32)])
+    monkeypatch.setattr(cli, "_get_session", lambda *args: (session, 100))
+    cfg = {"_scene": "outside", "_config_dir": ".", "detector": {
+        "outside": {"model": "pose.onnx", "imgsz": 100}}}
+    with pytest.raises(RuntimeError, match="separate decoder"):
+        cli.run_detection_array(np.zeros((100, 100, 3), np.uint8), cfg)
+
+
+def test_mot_metric_perfect_identity():
+    pytest.importorskip("motmetrics")
+    from tools.compare_onnx_candidates import mot_metrics
+    gt = {1: [{"track_id": 1, "bbox": [0, 0, 10, 10]}],
+          2: [{"track_id": 1, "bbox": [1, 0, 10, 10]}]}
+    metrics = mot_metrics(gt, gt)
+    assert metrics["mota"] == metrics["idf1"] == 1
+    assert metrics["num_switches"] == 0

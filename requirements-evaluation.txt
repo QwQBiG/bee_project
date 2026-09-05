@@ -1,0 +1,6 @@
+# Optional benchmark dependencies; install alongside the project environment.
+# BYTETracker adapter verified with ultralytics 8.4.96.
+ultralytics==8.4.96
+lap==0.5.13
+motmetrics==1.4.0
+xmltodict==1.0.4

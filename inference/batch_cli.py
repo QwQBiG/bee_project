@@ -30,6 +30,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--input", required=True,
                         help="Official JPG image folder.")
     parser.add_argument("--config", default=None)
+    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default=None,
+                        help="Diagnostic runtime override; cuda fails if GPU is unavailable.")
     # These three options support source-level testing. Packaged executables
     # infer the same values from their required filenames and fixed output dir.
     parser.add_argument("--sequence", choices=sorted(VALID_SEQUENCES))
@@ -68,7 +70,24 @@ def list_official_images(input_dir: str | Path) -> List[Tuple[int, Path]]:
 
 def _tracking_rows(images: Sequence[Tuple[int, Path]], config: Dict[str, Any]) \
         -> Tuple[List[Dict[str, Any]], int]:
-    """Run the existing light IoU tracker in memory without stale cache."""
+    """Run the selected scene tracker in memory without stale file cache."""
+    options = config.get("tracking", {})
+    backend = options.get("backend", "iou")
+    if backend == "bytetrack":
+        from tracking.onnx_bytetrack import OnnxByteTracker
+        tracker = OnnxByteTracker(options)
+        rows, elapsed = [], 0
+        for frame_id, image_path in images:
+            # Low-score boxes are association candidates, never unconditional
+            # MOT output. BYTETracker confirms/filters the actual output tracks.
+            detections, frame_ms = run_detection(
+                image_path, config, conf_override=tracker.low, topk=600)
+            elapsed += frame_ms
+            rows.extend({"frame_id": frame_id, **row}
+                        for row in tracker.update(detections))
+        return rows, elapsed
+    if backend != "iou":
+        raise ValueError(f"unknown tracking backend: {backend}")
     previous_boxes: List[List[float]] = []
     previous_ids: List[int] = []
     next_id = 1
@@ -119,6 +138,10 @@ def execute(args: argparse.Namespace, executable: str | Path) -> Path:
     images = list_official_images(args.input)
     config = copy.deepcopy(load_runtime_config(args.config))
     config["_scene"] = sequence.split("-")[0].lower()
+    config["_device"] = getattr(args, "device", None) or config.get("runtime", {}).get("device", "auto")
+    # Scene-specific options must not silently change the other task domain.
+    config["tracking"] = config.get("tracking", {}).get(config["_scene"], {})
+    config["tiling"] = config.get("tiling", {}).get(config["_scene"], {})
     if sequence.endswith("-detection"):
         # Detection scoring forbids confidence-based removal below the official
         # per-frame cap. Tracking keeps its configured decision threshold.

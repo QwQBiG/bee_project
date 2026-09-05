@@ -1,8 +1,9 @@
 {
-  "_comment": "Competition-standard inference config (SY-202601 §3.3).\n Place this file next to algorithm.exe after PyInstaller onedir compilation.\n 'model' paths are resolved relative to this config's directory (i.e. \n alongside the .exe). Weights must be exported with imgsz matching the \n scene (outside=1280, inside=640) — see models/trainer.py export_model().",
+  "_comment": "Folder inference configuration. Model paths resolve relative to this config. See docs/competition/ONNX运行说明.md for scene options and runtime dependencies.",
   "detector": {
     "outside": {
-      "model": "../artifacts/models/bee_outside_ft_v1.onnx",
+      "model": "../artifacts/models/hive_entrance_bee_yolov8n.onnx",
+      "class_ids": [0, 1, 2, 3],
       "imgsz": 1280,
       "conf": 0.25,
       "iou": 0.45,
@@ -16,5 +17,21 @@
       "scene_hint": "inside"
     }
   },
-  "labels": {"0": "bee"}
+  "labels": {"0": "bee"},
+  "tracking": {
+    "inside": {"backend": "iou"},
+    "outside": {
+      "backend": "bytetrack",
+      "track_high_thresh": 0.25,
+      "track_low_thresh": 0.05,
+      "new_track_thresh": 0.25,
+      "track_buffer": 10,
+      "match_thresh": 0.8,
+      "fuse_score": true
+    }
+  },
+  "tiling": {
+    "inside": {"enabled": false},
+    "outside": {"enabled": false}
+  }
 }

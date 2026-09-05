@@ -3,6 +3,7 @@
 Run from repository root: python -m tools.smoke_batch_onnx
 Outputs stay under ignored output/. This is not an accuracy benchmark.
 """
+import argparse
 import json
 import subprocess
 import sys
@@ -12,6 +13,9 @@ import cv2
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="cpu")
+    args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     work = root / "output" / "onnx_smoke_20260905"
     sources = {
@@ -41,6 +45,7 @@ def main():
                 sys.executable, "-m", "inference.batch_cli", "--input", str(folder),
                 "--sequence", sequence, "--team-id", "123456",
                 "--output-dir", str(work / "results"),
+                "--device", args.device,
             ], cwd=root, capture_output=True, text=True, timeout=180)
             if run.returncode or len(run.stdout.splitlines()) != 1:
                 raise RuntimeError(f"{sequence}: {run.stdout} {run.stderr}")

@@ -120,3 +120,7 @@ data/external/oist/annotations/frame_annotations_70fps/
 # 官方原始视频的本地工作目录（可能包含大文件和本机绝对路径）
 datasets/official_work/
 datasets/official_pose/
+
+# 本地工作报告，不随代码发布
+/docs/competition/实测与收尾状态_20260905.md
+/docs/competition/提分实验_20260905.md

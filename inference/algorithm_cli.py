@@ -39,6 +39,7 @@ Usage (tracking, local development — sequence cache persisted):
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import os
@@ -244,12 +245,15 @@ def multiclass_nms(
 _SESSIONS: Dict[str, Tuple[Any, int, int]] = {}  # key → (session, imgsz, outputs)
 
 
-def _get_session(model_path: Path, imgsz: int, config_dir: str) -> Tuple[Any, int]:
+def _get_session(model_path: Path, imgsz: int, config_dir: str,
+                 device: str = "auto") -> Tuple[Any, int]:
     """Build/retrieve an ONNX Runtime session with INFO+WARNING muted."""
     resolved = (Path(config_dir) / model_path).resolve()
     if resolved.suffix.lower() != ".onnx":
         raise ValueError("inference requires an ONNX model")
-    key = f"{resolved}|{imgsz}"
+    if device not in ("auto", "cpu", "cuda"):
+        raise ValueError("ONNX device must be auto, cpu or cuda")
+    key = f"{resolved}|{imgsz}|{device}"
     if key in _SESSIONS:
         sess, sz, _ = _SESSIONS[key]
         return sess, sz
@@ -264,7 +268,7 @@ def _get_session(model_path: Path, imgsz: int, config_dir: str) -> Tuple[Any, in
         available = ort.get_available_providers()
     except Exception:
         available = ["CPUExecutionProvider"]
-    if "CUDAExecutionProvider" in available:
+    if device != "cpu" and "CUDAExecutionProvider" in available:
         providers.append("CUDAExecutionProvider")
     providers.append("CPUExecutionProvider")
     if not model_path.is_absolute():
@@ -275,6 +279,8 @@ def _get_session(model_path: Path, imgsz: int, config_dir: str) -> Tuple[Any, in
         raise FileNotFoundError(404, f"onnx model not found: {resolved}")
     sess = ort.InferenceSession(str(resolved), sess_options=opts,
                                  providers=providers)
+    if device == "cuda" and "CUDAExecutionProvider" not in sess.get_providers():
+        raise RuntimeError("CUDA was requested but the ONNX session fell back to CPU")
     _SESSIONS[key] = (sess, imgsz, len(sess.get_outputs()))
     return sess, imgsz
 
@@ -286,20 +292,26 @@ def run_detection(image_path: Path, config: Dict[str, Any], *,
     """Return (detections_list, processing_time_ms)."""
     import cv2  # type: ignore
 
-    # Scene selection: path hint first, image saturation fallback.
-    scene_key = config.get("_scene") or infer_scene_from_path(str(image_path))
+    raw = cv2.imdecode(np.fromfile(str(image_path), dtype=np.uint8), cv2.IMREAD_COLOR)
+    if raw is None:
+        raise OSError(501, f"cannot decode image: {image_path}")
+    scene = config.get("_scene") or infer_scene_from_path(str(image_path))
+    if config.get("tiling", {}).get("enabled", False):
+        from inference.tiled_detection import detect_array
+        return detect_array(raw, {**config, "_scene": scene},
+                            conf_override=conf_override, topk=topk)
+    return run_detection_array(raw, config, conf_override=conf_override,
+                               topk=topk, scene=scene)
+
+
+def run_detection_array(raw: np.ndarray, config: Dict[str, Any], *,
+                        conf_override: Optional[float] = None, topk: int = 300,
+                        scene: Optional[str] = None) -> Tuple[List[Dict[str, Any]], int]:
+    """Shared decoded-image inference for batch, tracker and tiled evaluation."""
+    import cv2
+    scene_key = scene or config.get("_scene")
     if scene_key is None:
-        raw = cv2.imdecode(
-            np.fromfile(str(image_path), dtype=np.uint8), cv2.IMREAD_COLOR)
-        if raw is None:
-            raise OSError(501, f"cannot decode image: {image_path}")
-        scene_key = ("outside" if "outside" in infer_scene_from_image(raw)
-                     else "inside")
-    else:
-        raw = cv2.imdecode(
-            np.fromfile(str(image_path), dtype=np.uint8), cv2.IMREAD_COLOR)
-        if raw is None:
-            raise OSError(501, f"cannot decode image: {image_path}")
+        scene_key = "outside" if "outside" in infer_scene_from_image(raw) else "inside"
 
     det_cfg = (config["detector"].get("outside")
                if scene_key.startswith("outside") else
@@ -315,7 +327,8 @@ def run_detection(image_path: Path, config: Dict[str, Any], *,
     config_dir = config["_config_dir"]
 
     t0 = time.perf_counter()
-    sess, _ = _get_session(model_rel, imgsz, config_dir)
+    sess, _ = _get_session(model_rel, imgsz, config_dir,
+                           config.get("_device", "auto"))
     input_name = sess.get_inputs()[0].name
     input_shape = sess.get_inputs()[0].shape[-2:]  # (H, W)
     sz = (int(input_shape[0]), int(input_shape[1]))
@@ -330,10 +343,17 @@ def run_detection(image_path: Path, config: Dict[str, Any], *,
     if pred.ndim == 3:
         pred = pred[0]
     pred = pred.T
-    if pred.ndim != 2 or pred.shape[1] != 5:
-        raise RuntimeError(f"expected single-class YOLO detection output, got {pred.shape}; pose models require a separate decoder")
+    metadata = sess.get_modelmeta().custom_metadata_map if hasattr(sess, "get_modelmeta") else {}
+    if metadata.get("task", "detect") != "detect":
+        raise RuntimeError("pose models require a separate decoder")
+    names = ast.literal_eval(metadata["names"]) if "names" in metadata else {0: "bee"}
+    if pred.ndim != 2 or pred.shape[1] != 4 + len(names):
+        raise RuntimeError(f"unsupported raw YOLO detection output: {pred.shape}")
+    class_ids = det_cfg.get("class_ids", [0] if len(names) == 1 else None)
+    if not class_ids or any(type(i) is not int or not 0 <= i < len(names) for i in class_ids):
+        raise ValueError("multi-class weights require explicit verified bee class_ids")
     cx_cy_w_h = pred[:, :4]
-    cls_scores = pred[:, 4:].max(axis=1)
+    cls_scores = pred[:, [4 + i for i in class_ids]].max(axis=1)
     # NMS expects left/top/width/height, whereas YOLO emits center coordinates.
     scaled_boxes = scale_boxes(cx_cy_w_h, ratio_pad, raw.shape[:2])
     keep = multiclass_nms(
