@@ -198,12 +198,13 @@ def multiclass_nms(
     topk: int = 300,
 ) -> np.ndarray:
     """Simple numpy NMS (single-class detector → only one label)."""
-    mask = scores >= conf_threshold
+    mask = ((scores >= conf_threshold) & np.isfinite(scores)
+            & np.isfinite(boxes).all(axis=1) & (boxes[:, 2:] > 0).all(axis=1))
     boxes = boxes[mask]
     scores = scores[mask]
     if boxes.size == 0:
         return np.empty((0, 5), dtype=np.float32)
-    order = scores.argsort()[::-1][:topk]
+    order = np.argsort(-scores, kind="stable")
     boxes = boxes[order]
     scores = scores[order]
     x1, y1 = boxes[:, 0], boxes[:, 1]
@@ -215,7 +216,7 @@ def multiclass_nms(
     while order.size > 0:
         i = int(order[0])
         keep.append(i)
-        if order.size == 1:
+        if order.size == 1 or len(keep) >= topk:
             break
         rest = order[1:]
         xx1 = np.maximum(x1[i], x1[rest])
@@ -245,7 +246,10 @@ _SESSIONS: Dict[str, Tuple[Any, int, int]] = {}  # key → (session, imgsz, outp
 
 def _get_session(model_path: Path, imgsz: int, config_dir: str) -> Tuple[Any, int]:
     """Build/retrieve an ONNX Runtime session with INFO+WARNING muted."""
-    key = f"{model_path.resolve()}|{imgsz}"
+    resolved = (Path(config_dir) / model_path).resolve()
+    if resolved.suffix.lower() != ".onnx":
+        raise ValueError("inference requires an ONNX model")
+    key = f"{resolved}|{imgsz}"
     if key in _SESSIONS:
         sess, sz, _ = _SESSIONS[key]
         return sess, sz
@@ -283,7 +287,7 @@ def run_detection(image_path: Path, config: Dict[str, Any], *,
     import cv2  # type: ignore
 
     # Scene selection: path hint first, image saturation fallback.
-    scene_key = infer_scene_from_path(str(image_path))
+    scene_key = config.get("_scene") or infer_scene_from_path(str(image_path))
     if scene_key is None:
         raw = cv2.imdecode(
             np.fromfile(str(image_path), dtype=np.uint8), cv2.IMREAD_COLOR)
@@ -318,7 +322,7 @@ def run_detection(image_path: Path, config: Dict[str, Any], *,
 
     letterboxed, ratio_pad = letterbox(raw, sz)
     blob = cv2.dnn.blobFromImage(
-        letterboxed, 1 / 255.0, sz, (0, 0, 0), swapRB=True, crop=False)
+        letterboxed, 1 / 255.0, sz[::-1], (0, 0, 0), swapRB=True, crop=False)
     pred = sess.run(None, {input_name: blob})[0]
 
     # ultralytics YOLOv8 detect .onnx → shape [1, 4+num_classes, 8400]
@@ -326,16 +330,17 @@ def run_detection(image_path: Path, config: Dict[str, Any], *,
     if pred.ndim == 3:
         pred = pred[0]
     pred = pred.T
-    if pred.shape[1] < 5:
-        raise RuntimeError(f"unexpected onnx output shape: {pred.shape}")
+    if pred.ndim != 2 or pred.shape[1] != 5:
+        raise RuntimeError(f"expected single-class YOLO detection output, got {pred.shape}; pose models require a separate decoder")
     cx_cy_w_h = pred[:, :4]
     cls_scores = pred[:, 4:].max(axis=1)
-    cls_ids = pred[:, 4:].argmax(axis=1)
+    # NMS expects left/top/width/height, whereas YOLO emits center coordinates.
+    scaled_boxes = scale_boxes(cx_cy_w_h, ratio_pad, raw.shape[:2])
     keep = multiclass_nms(
-        cx_cy_w_h, cls_scores, iou_thr, conf_thr, topk=topk)
+        scaled_boxes, cls_scores, iou_thr, conf_thr, topk=topk)
     keep_boxes = keep[:, :4]
     raw_scores = keep[:, 4].copy() if keep.size else np.empty((0,), dtype=np.float32)
-    boxes = scale_boxes(keep_boxes, ratio_pad, raw.shape[:2])
+    boxes = keep_boxes
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     label_map = config.get("labels", {"0": "bee"})
@@ -343,6 +348,8 @@ def run_detection(image_path: Path, config: Dict[str, Any], *,
     # scale_boxes keeps xywh rows; attach the matched score column from NMS.
     for row, conf in zip(boxes, raw_scores):
         x, y, w, h = [float(v) for v in row[:4]]
+        if round(w, 2) <= 0 or round(h, 2) <= 0:
+            continue
         cid = 0
         out.append({
             "bbox": [round(x, 2), round(y, 2), round(w, 2), round(h, 2)],

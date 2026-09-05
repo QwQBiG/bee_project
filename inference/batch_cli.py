@@ -20,8 +20,13 @@ from inference.submission_contract import (
 )
 
 
+class StatusParser(argparse.ArgumentParser):
+    def error(self, message):
+        raise ValueError(message)
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="bee-competition")
+    parser = StatusParser(prog="bee-competition")
     parser.add_argument("--input", required=True,
                         help="Official JPG image folder.")
     parser.add_argument("--config", default=None)
@@ -89,6 +94,7 @@ def _tracking_rows(images: Sequence[Tuple[int, Path]], config: Dict[str, Any]) \
 
 
 def execute(args: argparse.Namespace, executable: str | Path) -> Path:
+    started = time.perf_counter()
     if args.sequence and args.team_id:
         sequence, team_id = args.sequence, args.team_id
     elif args.sequence or args.team_id:
@@ -96,9 +102,23 @@ def execute(args: argparse.Namespace, executable: str | Path) -> Path:
     else:
         sequence, team_id = identity_from_executable(executable)
 
+    if not re.fullmatch(r"[0-9]{6}", team_id):
+        raise ValueError("team ID must be six ASCII digits")
+    parts = Path(args.input).parts
+    path_sequence = None
+    if len(parts) >= 3 and parts[-1].lower() == "images":
+        candidate = f"{parts[-3].capitalize()}-{parts[-2].lower()}"
+        if candidate in VALID_SEQUENCES:
+            path_sequence = candidate
+    if path_sequence is not None and sequence != path_sequence:
+        raise ValueError("input path and executable task disagree")
+    if Path(executable).suffix.lower() == ".exe":
+        if identity_from_executable(executable) != (sequence, team_id):
+            raise ValueError("executable identity cannot be overridden")
+
     images = list_official_images(args.input)
     config = copy.deepcopy(load_runtime_config(args.config))
-    started = time.perf_counter()
+    config["_scene"] = sequence.split("-")[0].lower()
     if sequence.endswith("-detection"):
         # Detection scoring forbids confidence-based removal below the official
         # per-frame cap. Tracking keeps its configured decision threshold.

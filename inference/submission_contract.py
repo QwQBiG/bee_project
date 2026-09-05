@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
+import tempfile
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Sequence
@@ -38,7 +40,7 @@ def frame_id_from_path(path: str | Path) -> int:
 
 def _check_header(team_id: str, sequence: str, task: str,
                   num_frames: int, processing_time_ms: int) -> None:
-    if not re.fullmatch(r"\d{6}", team_id):
+    if not re.fullmatch(r"[0-9]{6}", team_id):
         raise ValueError("team_id must contain exactly six digits")
     if sequence not in VALID_SEQUENCES or not sequence.endswith(task):
         raise ValueError(f"sequence does not match task={task}: {sequence}")
@@ -55,7 +57,7 @@ def _box(row: Mapping[str, Any]) -> List[float]:
     left, top, width, height = (float(value) for value in box)
     if not all(math.isfinite(value) for value in (left, top, width, height)):
         raise ValueError("bbox values must be finite numbers")
-    if width <= 0 or height <= 0:
+    if round(width, 2) <= 0 or round(height, 2) <= 0:
         raise ValueError("bbox width and height must be greater than zero")
     return [round(left, 2), round(top, 2), round(width, 2), round(height, 2)]
 
@@ -142,9 +144,16 @@ def write_result(path: str | Path, payload: Mapping[str, Any]) -> Path:
     """Write UTF-8 compact JSON without a trailing newline."""
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(
-        json.dumps(payload, ensure_ascii=False, separators=(",", ":"),
-                   allow_nan=False),
-        encoding="utf-8",
-    )
+    serialized = json.dumps(payload, ensure_ascii=False, separators=(",", ":"),
+                            allow_nan=False)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8",
+                                         dir=destination.parent, delete=False) as handle:
+            temporary = Path(handle.name)
+            handle.write(serialized)
+        os.replace(temporary, destination)
+    finally:
+        if temporary is not None and temporary.exists():
+            temporary.unlink()
     return destination

@@ -42,6 +42,7 @@ def test_detection_folder_writes_new_contract(monkeypatch, tmp_path):
     monkeypatch.setattr(batch_cli, "load_runtime_config", lambda _: {})
 
     def fake_detection(path, config, **kwargs):
+        assert config["_scene"] == "inside"
         calls.append((path.name, kwargs))
         return ([{"bbox": [1, 2, 3, 4], "class_id": 0,
                   "confidence": 0.75}], 3)
@@ -51,7 +52,7 @@ def test_detection_folder_writes_new_contract(monkeypatch, tmp_path):
         input=str(images), config=None, sequence="Inside-detection",
         team_id="438137", output_dir=str(tmp_path / "results"),
     )
-    output = batch_cli.execute(args, "ignored.exe")
+    output = batch_cli.execute(args, "batch_cli.py")
     result = json.loads(output.read_text(encoding="utf-8"))
     assert output.name == "Inside-detection-438137.json"
     assert result["num_frames"] == 2 and result["num_records"] == 2
@@ -76,7 +77,7 @@ def test_tracking_folder_assigns_non_reused_ids(monkeypatch, tmp_path):
         team_id="438137", output_dir=str(tmp_path / "results"),
     )
     result = json.loads(
-        batch_cli.execute(args, "ignored.exe").read_text(encoding="utf-8"))
+        batch_cli.execute(args, "batch_cli.py").read_text(encoding="utf-8"))
     assert [row[1] for row in result["tracks"]] == [1, 2]
     assert result["num_tracks"] == 2
 
