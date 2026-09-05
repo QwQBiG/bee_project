@@ -6,27 +6,31 @@
 
 ## 一、最简运行流程
 
-以下流程面向 Windows 10/11、NVIDIA RTX 30/40 系显卡。首次部署需要联网下载依赖和两个模型权重。
+以下流程面向 64 位 Windows 10/11 和 NVIDIA RTX 显卡。首次部署需要联网下载依赖和两个模型权重。
 
 ### 1. 获取代码并创建独立环境
 
-推荐使用 Python 3.11；项目也已在 Python 3.13.7 环境完成运行验证。
+本项目的本地 PyTorch wheel 使用 `cp313`，因此必须安装 64 位 Python 3.13。
 
 ```powershell
 git clone https://github.com/QwQBiG/bee_project.git
 Set-Location -LiteralPath ".\bee_project"
-python -m venv .venv
+py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 ```
 
-### 2. 安装 RTX 30/40 系 GPU 环境
+### 2. 安装 GPU 环境和项目依赖
 
-先更新 [NVIDIA 显卡驱动](https://www.nvidia.com/Download/index.aspx)，然后安装 PyTorch CUDA 12.6 版本和项目依赖：
+将 `torch-2.13.0+cu132-cp313-cp313-win_amd64.whl` 放入项目的 `packages/`
+目录，然后严格按照 [packages/README.md](../../packages/README.md) 安装 PyTorch、
+torchvision 和其余项目依赖。运行 wheel 只要求兼容的 NVIDIA 驱动，普通推理不要求
+单独安装 CUDA Toolkit。
 
 ```powershell
-python -m pip install torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/cu126
-python -m pip install -r requirements.txt
+python -m pip install ".\packages\torch-2.13.0+cu132-cp313-cp313-win_amd64.whl"
+python -m pip install --no-deps torchvision==0.28.0+cu132 --index-url https://download.pytorch.org/whl/cu132
+python -m pip install -r .\requirements.txt
 ```
 
 检查 GPU：
@@ -81,33 +85,34 @@ output/demo_outside/outside_stats.json
 
 ## 二、环境选择详细说明
 
-### 1. RTX 30/40 系应选择什么版本
+### 1. RTX 显卡应选择什么版本
 
-| 显卡系列 | 架构 | 官方起始 CUDA 支持 | 本项目建议 |
-|---|---|---:|---|
-| RTX 30 系 | Ampere | CUDA 11.0 | PyTorch 2.12.0 + CUDA 12.6 |
-| RTX 40 系 | Ada | CUDA 11.8 | PyTorch 2.12.0 + CUDA 12.6 |
+本项目统一使用 PyTorch 2.13.0 + CUDA 13.2（`cu132`）环境，适用于具备兼容
+NVIDIA 驱动的 RTX 30/40/50 系显卡。直接安装 NVIDIA 当前适用于本机显卡的最新
+驱动最省事；可通过 `nvidia-smi` 检查驱动和显卡是否正常识别。
 
-CUDA 12.6 同时支持这两代显卡，便于团队统一环境。Windows 驱动建议更新至 560.76 或更高版本；直接安装当前最新的 NVIDIA 驱动更省事。架构兼容关系可查阅 [NVIDIA CUDA 架构矩阵](https://docs.nvidia.com/datacenter/tesla/drivers/cuda-toolkit-driver-and-architecture-matrix.html)，PyTorch 版本命令来自 [PyTorch 官方版本页](https://pytorch.org/get-started/previous-versions/)。
-
-通过官方 `pip` 命令安装的 PyTorch 已携带所需 CUDA 运行库。普通运行本项目通常只需 NVIDIA 驱动，不需要另外安装完整 CUDA Toolkit 或 cuDNN；只有编译 CUDA 扩展时才需要 Toolkit。
+PyTorch wheel 已携带所需 CUDA 运行库。普通运行只需 NVIDIA 驱动，不需要另外
+安装完整 CUDA Toolkit 或 cuDNN；只有编译 CUDA 扩展时才需要 Toolkit。
 
 ### 2. Python 版本
 
-- 团队统一环境推荐 Python 3.11，第三方库兼容范围更稳。
-- 当前 Demo 已在 Python 3.13.7、PyTorch 2.13.0+cu132、Ultralytics 8.4.96 环境完成验证。
-- 上述已验证环境使用 RTX 5060 Laptop GPU；30/40 系推荐安装命令采用兼容范围更广的 CUDA 12.6，而不是照搬 CUDA 13.2。
+- 本地 Torch 文件名包含 `cp313`，只能安装到 64 位 Python 3.13。
+- 当前固定组合为 PyTorch 2.13.0+cu132、torchvision 0.28.0+cu132、Ultralytics 8.4.96。
+- 该组合已在 Windows 11 和 RTX 5060 Laptop GPU 环境进行验证。
 
 ### 3. 为什么先安装 PyTorch，再安装 requirements
 
-`requirements.txt` 只规定了最低 PyTorch 版本，没有指定 CUDA 构建。直接安装全部依赖可能得到 CPU 版 PyTorch。先用 PyTorch 官方 CUDA 12.6 地址安装，可明确获得 GPU 版；之后安装其余依赖不会替换已满足要求的版本。
+`requirements.txt` 只列出项目的其余 Python 依赖，不再负责选择 Torch 构建。先安装
+`packages` 中的本地 Torch wheel 和官方 `cu132` torchvision，再安装 requirements，
+可避免 pip 自动选择错误的 CPU 或 CUDA 版本。
 
 ### 4. CPU 备用方式
 
-没有 NVIDIA GPU 时可以使用 CPU。安装 CPU 版 PyTorch，并把运行命令中的 `cuda:0` 改为 `cpu`：
+CUDA wheel 仍可以回退到 CPU。没有可用 NVIDIA GPU 时，无需重装另一套 Torch，
+只需把运行命令中的设备改为：
 
 ```powershell
-python -m pip install torch==2.12.0 torchvision==0.27.0 --index-url https://download.pytorch.org/whl/cpu
+python main.py ... --device cpu
 ```
 
 CPU 模式功能不变，但视频处理速度会明显降低。

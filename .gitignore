@@ -28,10 +28,12 @@ ENV/
 *.onnx
 *.bin
 
-# 本地安装包与旧启动器下载缓存（不提交）
+# 本地大型安装包（不提交；安装方法见 packages/README.md）
 /packages/*.whl
-/packages/*.zip
-/packages/get-pip.py
+
+# PyInstaller 构建产物
+/build/
+/dist/
 
 # 输出结果
 output/

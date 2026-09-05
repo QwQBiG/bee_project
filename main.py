@@ -27,22 +27,22 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='智慧养蜂蜜蜂识别与行为量化研究',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=r"""
 示例用法:
   # 处理巢外视频
-  run_cli.bat --mode outside --video data/outside.mp4 --output results/
+  .venv\Scripts\python.exe main.py --mode outside --video data/outside.mp4 --output results/
 
   # 处理巢内视频
-  run_cli.bat --mode inside --video data/inside.mp4 --output results/
+  .venv\Scripts\python.exe main.py --mode inside --video data/inside.mp4 --output results/
 
   # 多模态同步处理
-  run_cli.bat --mode multi --video data/outside.mp4 --video_inside data/inside.mp4 --output results/
+  .venv\Scripts\python.exe main.py --mode multi --video data/outside.mp4 --video_inside data/inside.mp4 --output results/
 
   # 使用标注工具
-  run_cli.bat --mode annotate --video data/video.mp4 --output annotations/
+  .venv\Scripts\python.exe main.py --mode annotate --video data/video.mp4 --output annotations/
 
   # 模型训练
-  run_cli.bat --mode train --config configs/train_config.yaml
+  .venv\Scripts\python.exe main.py --mode train --config configs/train_config.yaml
         """
     )
     

@@ -1,9 +1,7 @@
-# Bee Vision Python 依赖清单
-
-# 深度学习与目标检测；setup_runtime.bat 从 packages/ 安装此 CUDA wheel
-torch==2.13.0+cu132
-torchvision==0.28.0+cu132
-ultralytics>=8.0.0
+# Bee Vision 其余 Python 依赖清单
+# torch 与 torchvision 需要先按 packages/README.md 单独安装，以确保使用 CUDA 13.2 版本。
+# ByteTrack 适配层按此版本验证；不要用 >=，以免上游 API 变化。
+ultralytics==8.4.96
 lap==0.5.13
 
 # 视频、数值计算与报告
