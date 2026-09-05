@@ -4,6 +4,7 @@
     "outside": {
       "model": "../artifacts/models/hive_entrance_bee_yolov8n.onnx",
       "class_ids": [0, 1, 2, 3],
+      "detection_box_scale": 1.15,
       "imgsz": 1280,
       "conf": 0.25,
       "iou": 0.45,
@@ -18,6 +19,7 @@
     }
   },
   "labels": {"0": "bee"},
+  "runtime": {"device": "cuda"},
   "tracking": {
     "inside": {"backend": "iou"},
     "outside": {

@@ -269,6 +269,23 @@ def _get_session(model_path: Path, imgsz: int, config_dir: str,
     except Exception:
         available = ["CPUExecutionProvider"]
     if device != "cpu" and "CUDAExecutionProvider" in available:
+        # CUDA PTX compilation on newer GPUs must survive process restarts.
+        # Respect a caller-supplied cache; never alter the machine environment.
+        if "CUDA_CACHE_PATH" not in os.environ:
+            import tempfile
+            cache_root = (Path(tempfile.gettempdir()) / "bee-vision-runtime"
+                          if getattr(sys, "frozen", False)
+                          else Path(__file__).resolve().parents[1] / ".runtime")
+            cache_dir = cache_root / "cuda-cache"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            os.environ["CUDA_CACHE_PATH"] = str(cache_dir)
+        # Discover compatible CUDA/cuDNN libraries already supplied by PyTorch
+        # or NVIDIA packages, without importing the training stack.
+        if hasattr(ort, "preload_dlls"):
+            import contextlib
+            import io
+            with contextlib.redirect_stdout(io.StringIO()):
+                ort.preload_dlls()
         providers.append("CUDAExecutionProvider")
     providers.append("CPUExecutionProvider")
     if not model_path.is_absolute():

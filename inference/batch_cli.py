@@ -146,11 +146,22 @@ def execute(args: argparse.Namespace, executable: str | Path) -> Path:
         # Detection scoring forbids confidence-based removal below the official
         # per-frame cap. Tracking keeps its configured decision threshold.
         limit = 600 if sequence.startswith("Inside-") else 200
+        from inference.box_calibration import calibrate_detections
+        scale = float(config.get("detector", {}).get(config["_scene"], {}).get("detection_box_scale", 1.0))
+        # Reject invalid calibration before loading a model or writing results.
+        calibrate_detections([], scale, 1, 1)
         records: List[Dict[str, Any]] = []
         measured_ms = 0
         for frame_id, image_path in images:
             detections, frame_ms = run_detection(
                 image_path, config, conf_override=0.0, topk=limit)
+            if scale != 1.0:
+                import cv2
+                import numpy as np
+                raw = cv2.imdecode(np.fromfile(str(image_path), dtype=np.uint8), cv2.IMREAD_COLOR)
+                if raw is None:
+                    raise ValueError(f"cannot decode calibration image: {image_path}")
+                detections = calibrate_detections(detections, scale, raw.shape[1], raw.shape[0])
             measured_ms += frame_ms
             records.extend({
                 "frame_id": frame_id,
