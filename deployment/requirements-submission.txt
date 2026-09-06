@@ -1,0 +1,17 @@
+# Windows x86_64 competition packaging environment (versions locked)
+pyinstaller==6.22.2
+onnxruntime-gpu==1.29.0
+# Pin the runtime to NVIDIA's CUDA Toolkit 13.2 Update 2 component set.
+# Do not replace these lines with onnxruntime-gpu[cuda,cudnn]: that extra may
+# resolve to CUDA 13.3+ packages which are newer than the evaluation driver.
+cuda-toolkit[cublas,cudart,cufft,curand,nvjitlink,nvrtc]==13.2.2
+nvidia-cuda-runtime==13.2.86
+nvidia-cuda-nvrtc==13.2.86
+nvidia-cublas==13.4.1.3
+nvidia-cufft==12.2.0.57
+nvidia-curand==10.4.2.66
+nvidia-nvjitlink==13.2.86
+nvidia-cudnn-cu13==9.23.2.1
+numpy==2.2.6
+opencv-python-headless==4.12.0.88
+lap==0.5.13

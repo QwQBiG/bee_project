@@ -262,13 +262,17 @@ def _get_session(model_path: Path, imgsz: int, config_dir: str,
     # Mandatory per evaluation spec §3.3-4: only ERROR-level logs on stdout.
     opts.log_severity_level = 3
     opts.log_verbosity_level = 0
-    # Use CUDA if the driver exposes nvcuda.dll; fall back to CPU otherwise.
-    providers: List[str] = []
+    # Prefer CUDA, but Attachment 4 requires automatic CPU fallback when GPU
+    # initialization fails.  Explicit device=cuda remains strict for local
+    # diagnostics; the packaged configuration uses device=auto.
     try:
         available = ort.get_available_providers()
     except Exception:
         available = ["CPUExecutionProvider"]
-    if device != "cpu" and "CUDAExecutionProvider" in available:
+    cuda_available = (device != "cpu" and
+                      "CUDAExecutionProvider" in available)
+    preload_error: Optional[Exception] = None
+    if cuda_available:
         # CUDA PTX compilation on newer GPUs must survive process restarts.
         # Respect a caller-supplied cache; never alter the machine environment.
         if "CUDA_CACHE_PATH" not in os.environ:
@@ -284,20 +288,52 @@ def _get_session(model_path: Path, imgsz: int, config_dir: str,
         if hasattr(ort, "preload_dlls"):
             import contextlib
             import io
-            with contextlib.redirect_stdout(io.StringIO()):
-                ort.preload_dlls()
-        providers.append("CUDAExecutionProvider")
-    providers.append("CPUExecutionProvider")
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    ort.preload_dlls(directory="")
+            except TypeError:
+                # Compatibility with older ONNX Runtime releases.
+                try:
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        ort.preload_dlls()
+                except Exception as exc:
+                    preload_error = exc
+            except Exception as exc:
+                preload_error = exc
     if not model_path.is_absolute():
         resolved = (Path(config_dir) / str(model_path)).resolve()
     else:
         resolved = model_path
     if not resolved.is_file():
         raise FileNotFoundError(404, f"onnx model not found: {resolved}")
-    sess = ort.InferenceSession(str(resolved), sess_options=opts,
-                                 providers=providers)
-    if device == "cuda" and "CUDAExecutionProvider" not in sess.get_providers():
-        raise RuntimeError("CUDA was requested but the ONNX session fell back to CPU")
+    if device == "cuda" and not cuda_available:
+        raise RuntimeError("CUDA was requested but CUDAExecutionProvider is unavailable")
+
+    sess = None
+    if cuda_available and preload_error is None:
+        try:
+            sess = ort.InferenceSession(
+                str(resolved), sess_options=opts,
+                providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
+            if "CUDAExecutionProvider" not in sess.get_providers():
+                raise RuntimeError("CUDA provider was not activated")
+        except Exception as exc:
+            if device == "cuda":
+                raise RuntimeError(f"CUDA session initialization failed: {exc}") from exc
+            sys.stderr.write(
+                f"WARNING CUDA initialization failed; using CPU: {exc}\n")
+            sess = None
+    elif preload_error is not None:
+        if device == "cuda":
+            raise RuntimeError(f"CUDA runtime preload failed: {preload_error}") \
+                from preload_error
+        sys.stderr.write(
+            f"WARNING CUDA runtime preload failed; using CPU: {preload_error}\n")
+
+    if sess is None:
+        sess = ort.InferenceSession(
+            str(resolved), sess_options=opts,
+            providers=["CPUExecutionProvider"])
     _SESSIONS[key] = (sess, imgsz, len(sess.get_outputs()))
     return sess, imgsz
 
@@ -353,7 +389,25 @@ def run_detection_array(raw: np.ndarray, config: Dict[str, Any], *,
     letterboxed, ratio_pad = letterbox(raw, sz)
     blob = cv2.dnn.blobFromImage(
         letterboxed, 1 / 255.0, sz[::-1], (0, 0, 0), swapRB=True, crop=False)
-    pred = sess.run(None, {input_name: blob})[0]
+    try:
+        pred = sess.run(None, {input_name: blob})[0]
+    except Exception as exc:
+        device = config.get("_device", "auto")
+        providers = (sess.get_providers()
+                     if hasattr(sess, "get_providers") else [])
+        if device != "auto" or "CUDAExecutionProvider" not in providers:
+            raise
+        sys.stderr.write(
+            f"WARNING CUDA inference failed; retrying on CPU: {exc}\n")
+        cpu_session, _ = _get_session(model_rel, imgsz, config_dir, "cpu")
+        # Replace the auto cache entry so all remaining frames stay on CPU.
+        resolved_model = (Path(config_dir) / model_rel).resolve()
+        auto_key = f"{resolved_model}|{imgsz}|auto"
+        _SESSIONS[auto_key] = (
+            cpu_session, imgsz, len(cpu_session.get_outputs()))
+        sess = cpu_session
+        input_name = sess.get_inputs()[0].name
+        pred = sess.run(None, {input_name: blob})[0]
 
     # ultralytics YOLOv8 detect .onnx → shape [1, 4+num_classes, 8400]
     # We transpose → [8400, 4+cls], take cx/cy/w/h + max-class probability.

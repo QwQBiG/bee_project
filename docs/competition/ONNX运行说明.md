@@ -28,8 +28,9 @@ python -m inference.batch_cli --input C:/Test/Outside/tracking/images/ --sequenc
 检测保留 NMS 后前 200/600 条，不使用跟踪阈值过滤检测结果。
 跟踪低置信度候选仅用于关联，最终 JSON 的 conf=1 是提交约定，不是概率。
 
-`--device cpu` 用于 CPU 检查；`--device cuda` 无法启用 CUDA 时直接报错；
-项目默认配置要求 cuda，不能启用 GPU 时明确失败。仅显式使用 auto 时允许回退。
+`--device cpu` 用于 CPU 检查；`--device cuda` 用于严格GPU诊断，无法启用CUDA时
+直接报错。正式打包配置固定使用`auto`：优先CUDA，GPU初始化、推理或显存失败时
+自动回退CPU，并把回退原因写入stderr，不能污染stdout状态JSON。
 创建会话前调用 ONNX Runtime 的 preload_dlls，发现当前环境已安装的
 兼容 PyTorch/NVIDIA CUDA 与 cuDNN 运行库，不要求导入训练模块。
 源码 CUDA 编译缓存默认保存在 `.runtime/cuda-cache`；冻结程序使用系统临时目录。
@@ -40,3 +41,6 @@ python -m inference.batch_cli --input C:/Test/Outside/tracking/images/ --sequenc
 执行 `python -m tools.smoke_batch_onnx --device cpu` 可检查四个源码入口。
 切片实验选项默认为关闭；`tools.compare_onnx_candidates` 是本地对照工具，
 不属于正式提交入口。修改输入、配置或算法后应使用新的预测缓存。
+
+正式队伍号为`614689`，完整打包、自检、校验和重压缩命令见
+[`614689可执行程序打包说明.md`](614689可执行程序打包说明.md)。

@@ -37,10 +37,10 @@ def test_yolo_center_boxes_are_converted_before_nms(monkeypatch, tmp_path):
 
 
 def test_bad_arguments_produce_one_status_line(capsys):
-    assert batch_cli.main(["--unknown"]) == 1
+    assert batch_cli.main(["--unknown"]) == 0
     captured = capsys.readouterr()
     assert len(captured.out.splitlines()) == 1
-    assert not captured.err
+    assert json.loads(captured.out)["status"] == "error"
 
 
 def test_official_path_cannot_be_assigned_wrong_task():

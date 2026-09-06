@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -97,7 +98,71 @@ def test_error_status_is_exactly_one_line(capsys, tmp_path):
         "--sequence", "Inside-detection", "--team-id", "438137",
         "--output-dir", str(tmp_path),
     ])
-    output = capsys.readouterr().out
-    assert code == 1
+    captured = capsys.readouterr()
+    output = captured.out
+    assert code == 0
     assert len(output.splitlines()) == 1
-    assert output.startswith("ERROR ValueError:")
+    payload = json.loads(output)
+    assert payload["status"] == "error"
+    assert payload["error_type"] == "ValueError"
+
+
+def test_success_status_is_json_and_process_code_is_zero(monkeypatch, capsys, tmp_path):
+    result = tmp_path / "Inside-detection-438137.json"
+    result.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(batch_cli, "execute", lambda args, executable: result)
+    monkeypatch.setattr(batch_cli.sys, "argv", ["Inside-detection-438137.exe"])
+    code = batch_cli.main(["--input", str(tmp_path)])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert code == 0
+    assert payload == {
+        "status": "ok",
+        "team_id": "438137",
+        "sequence": "Inside-detection",
+        "output_path": result.resolve().as_posix(),
+    }
+    assert captured.err == ""
+
+
+def test_result_write_falls_back_beside_executable(monkeypatch, tmp_path):
+    preferred = tmp_path / "blocked"
+    executable = tmp_path / "bundle" / "Inside-detection-438137.exe"
+    executable.parent.mkdir()
+    calls = []
+
+    def fake_write(path, payload):
+        calls.append(path)
+        if Path(path).parent == preferred:
+            raise PermissionError("read only")
+        Path(path).write_text("{}", encoding="utf-8")
+        return Path(path)
+
+    monkeypatch.setattr(batch_cli, "write_result", fake_write)
+    output = batch_cli._write_with_fallback(
+        {}, "Inside-detection-438137.json", preferred, executable)
+    assert output.parent == executable.parent.resolve()
+    assert len(calls) == 2
+
+
+def test_detection_collapses_internal_model_classes_to_official_bee_class(
+    monkeypatch, tmp_path):
+    images = tmp_path / "Inside" / "detection" / "images"
+    images.parent.mkdir(parents=True)
+    _jpgs(images, 1)
+    monkeypatch.setattr(batch_cli, "load_runtime_config", lambda _: {
+        "runtime": {"device": "cpu"},
+        "tracking": {"inside": {}, "outside": {}},
+        "tiling": {"inside": {}, "outside": {}},
+        "detector": {"inside": {"detection_box_scale": 1.0}},
+    })
+    monkeypatch.setattr(batch_cli, "run_detection", lambda *_a, **_k: ([{
+        "class_id": 2, "confidence": 0.9, "bbox": [1, 2, 3, 4],
+    }], 1))
+    args = batch_cli.build_parser().parse_args([
+        "--input", str(images), "--sequence", "Inside-detection",
+        "--team-id", "614689", "--output-dir", str(tmp_path / "results"),
+    ])
+    payload = json.loads(
+        batch_cli.execute(args, "source.py").read_text(encoding="utf-8"))
+    assert payload["detections"][0][1] == 0

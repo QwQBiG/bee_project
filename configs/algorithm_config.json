@@ -12,6 +12,7 @@
     },
     "inside": {
       "model": "../artifacts/models/bee_inside_ft_v1.onnx",
+      "class_ids": [0, 1, 2],
       "imgsz": 640,
       "conf": 0.20,
       "iou": 0.45,
@@ -19,7 +20,7 @@
     }
   },
   "labels": {"0": "bee"},
-  "runtime": {"device": "cuda"},
+  "runtime": {"device": "auto"},
   "tracking": {
     "inside": {"backend": "iou"},
     "outside": {

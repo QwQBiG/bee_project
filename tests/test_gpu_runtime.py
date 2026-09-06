@@ -35,5 +35,34 @@ def test_requested_gpu_rejects_cpu_fallback(monkeypatch, tmp_path):
             get_providers=lambda: ["CPUExecutionProvider"]))
     monkeypatch.setitem(sys.modules, "onnxruntime", runtime)
     monkeypatch.setattr(cli, "_SESSIONS", {})
-    with pytest.raises(RuntimeError, match="fell back"):
+    with pytest.raises(RuntimeError, match="unavailable"):
         cli._get_session(model, 640, str(tmp_path), "cuda")
+
+
+def test_auto_device_retries_cpu_when_cuda_session_fails(monkeypatch, tmp_path):
+    model = tmp_path / "model.onnx"
+    model.touch()
+    attempts = []
+
+    def make_session(*args, **kwargs):
+        providers = kwargs["providers"]
+        attempts.append(providers)
+        if providers[0] == "CUDAExecutionProvider":
+            raise RuntimeError("missing CUDA DLL")
+        return SimpleNamespace(
+            get_outputs=lambda: [1],
+            get_providers=lambda: ["CPUExecutionProvider"])
+
+    runtime = SimpleNamespace(
+        SessionOptions=SimpleNamespace,
+        get_available_providers=lambda: [
+            "CUDAExecutionProvider", "CPUExecutionProvider"],
+        InferenceSession=make_session)
+    monkeypatch.setitem(sys.modules, "onnxruntime", runtime)
+    monkeypatch.setattr(cli, "_SESSIONS", {})
+    session, _ = cli._get_session(model, 640, str(tmp_path), "auto")
+    assert session.get_providers() == ["CPUExecutionProvider"]
+    assert attempts == [
+        ["CUDAExecutionProvider", "CPUExecutionProvider"],
+        ["CPUExecutionProvider"],
+    ]

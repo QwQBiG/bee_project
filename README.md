@@ -41,6 +41,23 @@ py -3.13 main.py --mode inside --video data\inside.mp4 --output output\inside
 
 默认配置位于 `configs/config.yaml`，模型文件位于 `artifacts/models/`。结果写入 `--output` 指定的目录，包括标注视频、统计 JSON 和离线 HTML 分析报告。CPU 可以运行，但长视频会比较慢；正式评测建议使用具备 CUDA 能力的 NVIDIA GPU。
 
+## 队伍614689正式打包
+
+正式评测采用四个文件夹级EXE，不使用上面的开发视频命令。程序通过`--input`
+接收连续JPG目录，汇总JSON写入`C:/TestResults/`。完整流程见
+[队伍614689可执行程序打包说明](docs/competition/614689可执行程序打包说明.md)。
+
+```bat
+py -3.13 tools\export_submission_onnx.py
+py -3.10 -m venv .venv-build
+.venv-build\Scripts\python.exe -m pip install -r deployment\requirements-submission.txt
+.venv-build\Scripts\python.exe build_submission.py --team_id 614689
+```
+
+打包后必须使用本队自建连续图片生成`selfcheck/`，再执行目录校验和最终重压缩。
+提交打包环境与日常训练环境分开：最终EXE仅使用ONNX权重，不收集Torch、
+Torchvision或Ultralytics；CUDA 运行组件固定为评测机支持的13.2系列。
+
 ## 测试
 
 ```bat

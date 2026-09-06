@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import copy
+import json
 import re
 import sys
 import time
@@ -112,6 +114,26 @@ def _tracking_rows(images: Sequence[Tuple[int, Path]], config: Dict[str, Any]) \
     return rows, elapsed
 
 
+def _write_with_fallback(
+    payload: Dict[str, Any],
+    filename: str,
+    preferred_dir: str | Path,
+    executable: str | Path,
+) -> Path:
+    """Write to C:/TestResults (or an override), then fall back beside the EXE."""
+    preferred = Path(preferred_dir).resolve()
+    try:
+        return write_result(preferred / filename, payload).resolve()
+    except OSError as primary_error:
+        fallback = Path(executable).resolve().parent
+        if fallback == preferred:
+            raise
+        sys.stderr.write(
+            f"WARNING result directory unavailable: {primary_error}; "
+            f"falling back to {fallback}\n")
+        return write_result(fallback / filename, payload).resolve()
+
+
 def execute(args: argparse.Namespace, executable: str | Path) -> Path:
     started = time.perf_counter()
     if args.sequence and args.team_id:
@@ -165,7 +187,9 @@ def execute(args: argparse.Namespace, executable: str | Path) -> Path:
             measured_ms += frame_ms
             records.extend({
                 "frame_id": frame_id,
-                "class_id": item.get("class_id", 0),
+                # Internal weights may distinguish worker/drone/queen/pollen,
+                # but the official submission is a single-class bee task.
+                "class_id": 0,
                 "conf": item["confidence"],
                 "bbox": item["bbox"],
             } for item in detections)
@@ -180,27 +204,50 @@ def execute(args: argparse.Namespace, executable: str | Path) -> Path:
         payload = build_tracking_result(
             team_id, sequence, len(images), processing_ms, records)
 
-    output = Path(args.output_dir) / f"{sequence}-{team_id}.json"
-    return write_result(output, payload)
+    filename = f"{sequence}-{team_id}.json"
+    return _write_with_fallback(
+        payload, filename, args.output_dir, executable)
 
 
-def _print_status(status: str, detail: Any) -> None:
-    clean_detail = " ".join(str(detail).splitlines())
-    sys.stdout.write(f"{status} {clean_detail}\n")
+def _print_status(payload: Dict[str, Any], stream=None) -> None:
+    """Emit exactly one compact UTF-8 JSON status line to stdout."""
+    target = stream or sys.stdout
+    target.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":"),
+                            allow_nan=False) + "\n")
+    target.flush()
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    # Third-party libraries occasionally print diagnostics to stdout.  The
+    # submission contract reserves stdout for one machine-readable status JSON
+    # line, so capture every operational message on stderr instead.
+    status_stream = sys.stdout
     try:
-        args = build_parser().parse_args(argv)
-        output = execute(args, sys.argv[0])
-        # The official contract allows one console status-summary line.
-        _print_status("OK", f"output={output}")
-        return 0
-    except SystemExit as exc:
-        return int(exc.code)
+        with contextlib.redirect_stdout(sys.stderr):
+            args = build_parser().parse_args(argv)
+            output = execute(args, sys.argv[0])
+        match = re.fullmatch(
+            r"(Inside|Outside)-(detection|tracking)-(\d{6})",
+            output.stem)
+        if not match:
+            raise ValueError(f"unexpected result filename: {output.name}")
+        sequence = f"{match.group(1)}-{match.group(2)}"
+        _print_status({
+            "status": "ok",
+            "team_id": match.group(3),
+            "sequence": sequence,
+            "output_path": output.as_posix(),
+        }, status_stream)
     except Exception as exc:
-        _print_status("ERROR", f"{type(exc).__name__}: {exc}")
-        return 1
+        clean_message = " ".join(str(exc).splitlines())
+        _print_status({
+            "status": "error",
+            "error_type": type(exc).__name__,
+            "message": clean_message,
+        }, status_stream)
+    # Attachment 4 requires process exit code 0 for both success and handled
+    # failure.  Machine-readable status is carried by the JSON line above.
+    return 0
 
 
 if __name__ == "__main__":
