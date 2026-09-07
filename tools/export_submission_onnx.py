@@ -1,4 +1,4 @@
-"""Export the current inside/outside Ultralytics PT weights to static ONNX."""
+"""Reproduce the submitted ONNX files from externally supplied PT weights."""
 
 from __future__ import annotations
 
@@ -38,10 +38,12 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--outside-pt",
-        default=str(PROJECT_ROOT / "artifacts/models/hive_entrance_bee_yolov8n.pt"))
+        required=True,
+        help="Trusted external source weight; it is not stored in this repository.")
     parser.add_argument(
         "--inside-pt",
-        default=str(PROJECT_ROOT / "artifacts/models/honey_bee_detector_yolov8s.pt"))
+        required=True,
+        help="Trusted external source weight; it is not stored in this repository.")
     parser.add_argument(
         "--output-dir", default=str(PROJECT_ROOT / "artifacts/models"))
     parser.add_argument("--opset", type=int, default=17)

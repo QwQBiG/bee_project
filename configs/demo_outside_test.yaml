@@ -1,5 +1,5 @@
 tracker:
-  model_path: "artifacts/models/hive_entrance_bee_yolov8n.pt"
+  model_path: "artifacts/models/hive_entrance_bee_yolov8n.onnx"
   conf_threshold: 0.10
   iou_threshold: 0.45
   device: null

@@ -26,6 +26,8 @@ ENV/
 *.pt
 *.pth
 *.onnx
+!artifacts/models/bee_inside_ft_v1.onnx
+!artifacts/models/hive_entrance_bee_yolov8n.onnx
 *.bin
 
 # 本地大型安装包（不提交；安装方法见 packages/README.md）

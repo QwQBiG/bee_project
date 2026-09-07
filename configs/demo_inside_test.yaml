@@ -1,5 +1,5 @@
 tracker:
-  model_path: "artifacts/models/honey_bee_detector_yolov8s.pt"
+  model_path: "artifacts/models/bee_inside_ft_v1.onnx"
   conf_threshold: 0.15
   iou_threshold: 0.45
   device: null

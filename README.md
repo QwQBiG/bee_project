@@ -48,7 +48,6 @@ py -3.13 main.py --mode inside --video data\inside.mp4 --output output\inside
 [队伍614689可执行程序打包说明](docs/competition/614689可执行程序打包说明.md)。
 
 ```bat
-py -3.13 tools\export_submission_onnx.py
 py -3.10 -m venv .venv-build
 .venv-build\Scripts\python.exe -m pip install -r deployment\requirements-submission.txt
 .venv-build\Scripts\python.exe build_submission.py --team_id 614689
