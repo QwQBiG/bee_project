@@ -45,6 +45,11 @@ def generate_selfcheck(team_id: str, exe_dir: str | Path,
         ])
     (selfcheck / f"console-{team_id}.log").write_text(
         "\n".join(logs), encoding="utf-8")
+    # Runtime visualizations are intentionally generated only after extraction
+    # and must not be embedded in the official submission ZIP.
+    runtime_output = bundle / "output"
+    if runtime_output.is_dir():
+        shutil.rmtree(runtime_output)
     return selfcheck
 
 

@@ -21,6 +21,7 @@
   },
   "labels": {"0": "bee"},
   "runtime": {"device": "auto"},
+  "visual_output": {"enabled": true, "fps": 24.0},
   "tracking": {
     "inside": {"backend": "iou"},
     "outside": {

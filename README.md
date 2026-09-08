@@ -46,6 +46,8 @@ py -3.13 main.py --mode inside --video data\inside.mp4 --output output\inside
 正式评测采用四个文件夹级EXE，不使用上面的开发视频命令。程序通过`--input`
 接收连续JPG目录，汇总JSON写入`C:/TestResults/`。完整流程见
 [队伍614689可执行程序打包说明](docs/competition/614689可执行程序打包说明.md)。
+四个EXE还会在解压目录下自动创建`output/figures`、`output/videos`、
+`output/data`和`output/reports`；该运行产物不包含在提交ZIP中。
 
 ```bat
 py -3.10 -m venv .venv-build

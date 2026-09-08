@@ -79,7 +79,7 @@ def _tracking_rows(images: Sequence[Tuple[int, Path]], config: Dict[str, Any]) \
         from tracking.onnx_bytetrack import OnnxByteTracker
         tracker = OnnxByteTracker(options)
         rows, elapsed = [], 0
-        for frame_id, image_path in images:
+        for position, (frame_id, image_path) in enumerate(images, start=1):
             # Low-score boxes are association candidates, never unconditional
             # MOT output. BYTETracker confirms/filters the actual output tracks.
             detections, frame_ms = run_detection(
@@ -87,6 +87,7 @@ def _tracking_rows(images: Sequence[Tuple[int, Path]], config: Dict[str, Any]) \
             elapsed += frame_ms
             rows.extend({"frame_id": frame_id, **row}
                         for row in tracker.update(detections))
+            _report_progress("inference", position, len(images))
         return rows, elapsed
     if backend != "iou":
         raise ValueError(f"unknown tracking backend: {backend}")
@@ -95,7 +96,7 @@ def _tracking_rows(images: Sequence[Tuple[int, Path]], config: Dict[str, Any]) \
     next_id = 1
     rows: List[Dict[str, Any]] = []
     elapsed = 0
-    for frame_id, image_path in images:
+    for position, (frame_id, image_path) in enumerate(images, start=1):
         detections, frame_ms = run_detection(image_path, config)
         elapsed += frame_ms
         boxes = [item["bbox"] for item in detections]
@@ -111,7 +112,14 @@ def _tracking_rows(images: Sequence[Tuple[int, Path]], config: Dict[str, Any]) \
             rows.append({"frame_id": frame_id, "track_id": track_id,
                          "bbox": detection["bbox"]})
         previous_boxes, previous_ids = boxes, current_ids
+        _report_progress("inference", position, len(images))
     return rows, elapsed
+
+
+def _report_progress(stage: str, current: int, total: int) -> None:
+    if current % 100 == 0 or current == total:
+        sys.stderr.write(f"[{stage}] {current}/{total} frames\n")
+        sys.stderr.flush()
 
 
 def _write_with_fallback(
@@ -174,7 +182,7 @@ def execute(args: argparse.Namespace, executable: str | Path) -> Path:
         calibrate_detections([], scale, 1, 1)
         records: List[Dict[str, Any]] = []
         measured_ms = 0
-        for frame_id, image_path in images:
+        for position, (frame_id, image_path) in enumerate(images, start=1):
             detections, frame_ms = run_detection(
                 image_path, config, conf_override=0.0, topk=limit)
             if scale != 1.0:
@@ -193,6 +201,7 @@ def execute(args: argparse.Namespace, executable: str | Path) -> Path:
                 "conf": item["confidence"],
                 "bbox": item["bbox"],
             } for item in detections)
+            _report_progress("inference", position, len(images))
         processing_ms = max(
             measured_ms, int((time.perf_counter() - started) * 1000))
         payload = build_detection_result(
@@ -203,6 +212,16 @@ def execute(args: argparse.Namespace, executable: str | Path) -> Path:
             measured_ms, int((time.perf_counter() - started) * 1000))
         payload = build_tracking_result(
             team_id, sequence, len(images), processing_ms, records)
+
+    visual_options = config.get("visual_output", {})
+    if visual_options.get("enabled", False):
+        from inference.visual_outputs import generate_visual_outputs
+        generate_visual_outputs(
+            payload, images, executable,
+            fps=float(visual_options.get("fps", 24.0)))
+        payload["processing_time_ms"] = max(
+            payload["processing_time_ms"],
+            int((time.perf_counter() - started) * 1000))
 
     filename = f"{sequence}-{team_id}.json"
     return _write_with_fallback(
