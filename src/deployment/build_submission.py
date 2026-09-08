@@ -44,8 +44,8 @@ def _resolve_models(config_path: Path, weights_dir: Path) \
             raise ValueError(f"config is missing detector.{scene}.model")
         basename = Path(model_value).name
         candidates = [
-            (config_path.parent / model_value).resolve(),
             (weights_dir / basename).resolve(),
+            (config_path.parent / model_value).resolve(),
         ]
         source = next((path for path in candidates if path.is_file()), None)
         if source is None or source.suffix.lower() != ".onnx":

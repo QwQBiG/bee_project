@@ -296,7 +296,7 @@ def _get_session(model_path: Path, imgsz: int, config_dir: str,
             import io
             try:
                 with contextlib.redirect_stdout(io.StringIO()):
-                    ort.preload_dlls(directory="")
+                    ort.preload_dlls(directory="" if getattr(sys, "frozen", False) else None)
             except TypeError:
                 # Compatibility with older ONNX Runtime releases.
                 try:

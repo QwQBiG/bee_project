@@ -12,6 +12,7 @@ from deployment.package_common import (
     SEQUENCES,
     directory_size,
     load_and_validate_result,
+    parse_status_line,
     validate_team_id,
 )
 
@@ -60,6 +61,16 @@ def validate_package(team_id: str, exe_dir: str | Path,
         log = root / "selfcheck" / f"console-{team_id}.log"
         if not log.is_file():
             raise ValueError(f"missing selfcheck log: {log.name}")
+        statuses = [parse_status_line(line[len("stdout: "):])
+                    for line in log.read_text(encoding="utf-8").splitlines()
+                    if line.startswith("stdout: ")]
+        if len(statuses) != 4 or {s.get("sequence") for s in statuses} != set(SEQUENCES):
+            raise ValueError("selfcheck log must contain all four task statuses")
+        for status in statuses:
+            expected = Path("C:/TestResults") / f"{status['sequence']}-{team_id}.json"
+            if (status.get("status") != "ok" or status.get("team_id") != team_id
+                    or Path(status.get("output_path", "")).resolve() != expected.resolve()):
+                raise ValueError("selfcheck did not succeed at the required output path")
     size = directory_size(root.rglob("*"))
     if size > MAX_UNPACKED_BYTES:
         raise ValueError("submission directory exceeds the 8 GiB unpacked limit")

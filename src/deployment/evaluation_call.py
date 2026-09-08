@@ -38,6 +38,7 @@ def evaluate(executable: str | Path, input_dir: str | Path) -> EvaluationRun:
         cwd=exe.parent,
         capture_output=True,
         check=False,
+        timeout=900,
     )
     stdout = completed.stdout.decode("utf-8", errors="strict")
     stderr = completed.stderr.decode("utf-8", errors="replace")
@@ -54,9 +55,15 @@ def evaluate(executable: str | Path, input_dir: str | Path) -> EvaluationRun:
     result_path = Path(output_value)
     if not result_path.is_absolute():
         result_path = (exe.parent / result_path).resolve()
+    expected = Path("C:/TestResults") / f"{sequence}-{team_id}.json"
+    if result_path.resolve() != expected.resolve():
+        raise ValueError(f"result must be written to {expected}, got {result_path}")
     if not result_path.is_file():
         raise FileNotFoundError(f"reported result does not exist: {result_path}")
-    load_and_validate_result(result_path, sequence, team_id)
+    payload = load_and_validate_result(result_path, sequence, team_id)
+    from inference.batch_cli import list_official_images
+    if payload["num_frames"] != len(list_official_images(images)):
+        raise ValueError("result num_frames does not match input JPG count")
     return EvaluationRun(sequence, team_id, result_path, stdout, stderr)
 
 

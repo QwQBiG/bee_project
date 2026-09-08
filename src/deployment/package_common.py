@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import zipfile
 from pathlib import Path
@@ -84,6 +85,21 @@ def validate_result_payload(
     expected_width = len(fields)
     if any(not isinstance(row, list) or len(row) != expected_width for row in rows):
         raise ValueError(f"every {rows_key} row must contain {expected_width} values")
+    pairs = set()
+    for row in rows:
+        if any(type(v) not in (int, float) or not math.isfinite(v) for v in row):
+            raise ValueError("record values must be finite numbers")
+        if type(row[0]) is not int or not 1 <= row[0] <= payload["num_frames"]:
+            raise ValueError("frame_id must be an integer within input range")
+        offset = 3 if task == "detection" else 2
+        if row[offset+2] <= 0 or row[offset+3] <= 0:
+            raise ValueError("box dimensions must be positive")
+        if task == "detection" and not 0 <= row[2] <= 1:
+            raise ValueError("confidence must be within [0, 1]")
+        if task == "tracking":
+            if type(row[1]) is not int or row[1] < 1 or (row[0], row[1]) in pairs:
+                raise ValueError("track ID must be positive and unique within frame")
+            pairs.add((row[0], row[1]))
     if task == "detection":
         if any(row[1] != 0 or row[7] != 1 for row in rows):
             raise ValueError("detection class_id must be 0 and ignore must be 1")
