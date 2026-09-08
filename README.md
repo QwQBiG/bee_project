@@ -1,69 +1,63 @@
 # 面向智慧养蜂的巢内外蜜蜂识别与行为量化
 
-本项目面向真实蜂箱生产与监测场景，处理巢外可见光视频和巢内红外视频，研究蜜蜂个体检测、多目标跟踪、姿态特征以及个体与群体行为量化。项目通过命令行提供研究与评测工具。
+队伍编号：`614689`。
 
-完整的使用、标注和评测文档见 [docs/README.md](docs/README.md)。
+项目采用标准 `src` 布局，顶层只保留源码、ONNX 权重、配置和依赖说明：
 
-## 配置运行环境（Windows）
+```text
+bee_project/
+├─ src/                 训练、推理、评测、打包代码及项目资料
+├─ weights/             正式 ONNX 权重
+├─ configs/             算法与运行配置
+├─ requirements.txt     开发依赖
+└─ README.md            使用说明
+```
 
-项目不再下载或解压便携 Python，也不再提供双击式安装、启动脚本。请先安装
-64 位 Python 3.13，并将
-`torch-2.13.0+cu132-cp313-cp313-win_amd64.whl` 放入 `packages/`，然后按照
-[packages/README.md](packages/README.md) 安装 CUDA 版 PyTorch 和项目依赖。文档同时提供：
+详细文档见 [src/docs/README.md](src/docs/README.md)，环境配置见
+[src/packages/README.md](src/packages/README.md)。本机放置于 `packages/` 的大型
+Torch wheel 不属于源码，继续由 Git 忽略。
 
-1. `.venv` 项目虚拟环境方案（推荐，不影响其他项目）；
-2. 系统 Python 3.13 直接安装方案（命令较短，但可能产生依赖冲突）。
+## 配置开发环境
 
-运行 PyTorch CUDA wheel 通常只需要兼容的 NVIDIA 显卡驱动，不要求另外安装
-CUDA Toolkit；如需编译 CUDA 扩展，再安装与 `cu132` 对应的 CUDA Toolkit 13.2。
+安装 64 位 Python 3.13 后，可创建项目虚拟环境：
 
-## 命令行用法
+```bat
+cd /d C:\你的路径\bee_project
+py -3.13 -m venv .venv
+.venv\Scripts\python.exe -m pip install --upgrade pip
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
 
-使用 `.venv`：
+也可以直接用系统 Python 3.13 安装依赖，详细命令见环境配置文档。
+
+## 运行视频分析
 
 ```bat
 # 巢外视频
-.venv\Scripts\python.exe main.py --mode outside --video data\outside.mp4 --output output\outside
+.venv\Scripts\python.exe src\main.py --mode outside --video "data\outside.mp4" --output "output\outside"
 
 # 巢内视频
-.venv\Scripts\python.exe main.py --mode inside --video data\inside.mp4 --output output\inside
+.venv\Scripts\python.exe src\main.py --mode inside --video "data\inside.mp4" --output "output\inside"
 ```
 
-直接使用系统 Python 3.13：
+直接使用系统 Python 时，将 `.venv\Scripts\python.exe` 换成 `py -3.13`。默认配置
+位于 `configs/config.yaml`，正式推理模型位于 `weights/`。
 
-```bat
-# 巢外视频
-py -3.13 main.py --mode outside --video data\outside.mp4 --output output\outside
+## 生成队伍 614689 比赛 EXE
 
-# 巢内视频
-py -3.13 main.py --mode inside --video data\inside.mp4 --output output\inside
-```
-
-默认配置位于 `configs/config.yaml`，模型文件位于 `artifacts/models/`。结果写入 `--output` 指定的目录，包括标注视频、统计 JSON 和离线 HTML 分析报告。CPU 可以运行，但长视频会比较慢；正式评测建议使用具备 CUDA 能力的 NVIDIA GPU。
-
-## 队伍614689正式打包
-
-正式评测采用四个文件夹级EXE，不使用上面的开发视频命令。程序通过`--input`
-接收连续JPG目录，汇总JSON写入`C:/TestResults/`。完整流程见
-[队伍614689可执行程序打包说明](docs/competition/614689可执行程序打包说明.md)。
-四个EXE还会在解压目录下自动创建`output/figures`、`output/videos`、
-`output/data`和`output/reports`；该运行产物不包含在提交ZIP中。
+正式 EXE 仅使用 ONNX 推理，不收集 Torch、Torchvision 或 Ultralytics：
 
 ```bat
 py -3.10 -m venv .venv-build
-.venv-build\Scripts\python.exe -m pip install -r deployment\requirements-submission.txt
-.venv-build\Scripts\python.exe build_submission.py --team_id 614689
+.venv-build\Scripts\python.exe -m pip install -r src\deployment\requirements-submission.txt
+.venv-build\Scripts\python.exe src\build_submission.py --team_id 614689
 ```
 
-打包后必须使用本队自建连续图片生成`selfcheck/`，再执行目录校验和最终重压缩。
-提交打包环境与日常训练环境分开：最终EXE仅使用ONNX权重，不收集Torch、
-Torchvision或Ultralytics；CUDA 运行组件固定为评测机支持的13.2系列。
+打包后生成 `EXE-614689/` 和 `EXE-614689.zip`。生成 selfcheck、校验和最终重新
+压缩的方法见 [队伍 614689 可执行程序打包说明](src/docs/competition/614689可执行程序打包说明.md)。
 
-## 测试
+## 运行测试
 
 ```bat
-.venv\Scripts\python.exe -m pytest -q
-
-# 使用系统 Python 时
-py -3.13 -m pytest -q
+.venv\Scripts\python.exe -m pytest -q src\tests src\test_project.py
 ```

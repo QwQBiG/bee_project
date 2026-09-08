@@ -2,7 +2,7 @@
   "_comment": "Folder inference configuration. Model paths resolve relative to this config. See docs/competition/ONNX运行说明.md for scene options and runtime dependencies.",
   "detector": {
     "outside": {
-      "model": "../artifacts/models/hive_entrance_bee_yolov8n.onnx",
+      "model": "../weights/hive_entrance_bee_yolov8n.onnx",
       "class_ids": [0, 1, 2, 3],
       "detection_box_scale": 1.15,
       "imgsz": 1280,
@@ -11,7 +11,7 @@
       "scene_hint": "outside"
     },
     "inside": {
-      "model": "../artifacts/models/bee_inside_ft_v1.onnx",
+      "model": "../weights/bee_inside_ft_v1.onnx",
       "class_ids": [0, 1, 2],
       "imgsz": 640,
       "conf": 0.20,

@@ -2,7 +2,7 @@
 
 # 巢外跟踪器配置（多模态模式使用）
 outside_tracker:
-  model_path: "artifacts/models/hive_entrance_bee_yolov8n.onnx"
+  model_path: "weights/hive_entrance_bee_yolov8n.onnx"
   conf_threshold: 0.10
   iou_threshold: 0.45
   imgsz: 1280
@@ -13,7 +13,7 @@ outside_tracker:
 
 # 巢内跟踪器配置（多模态模式使用）
 inside_tracker:
-  model_path: "artifacts/models/bee_inside_ft_v1.onnx"
+  model_path: "weights/bee_inside_ft_v1.onnx"
   conf_threshold: 0.15
   iou_threshold: 0.45
   use_enhancement: true
@@ -26,16 +26,16 @@ inside_tracker:
 data:
   # 巢外数据
   outside:
-    video_path: "data/outside_hive"
-    annotation_path: "datasets/outside_annotations"
+    video_path: "src/data/outside_hive"
+    annotation_path: "src/datasets/outside_annotations"
     train_split: 0.7
     val_split: 0.15
     test_split: 0.15
 
   # 巢内数据
   inside:
-    video_path: "data/inside_hive"
-    annotation_path: "datasets/inside_annotations"
+    video_path: "src/data/inside_hive"
+    annotation_path: "src/datasets/inside_annotations"
     train_split: 0.7
     val_split: 0.15
     test_split: 0.15

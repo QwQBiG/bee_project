@@ -1,0 +1,27 @@
+{
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    ".runtime": true,
+    "artifacts": true,
+    "build": true,
+    "dist": true,
+    "output": true,
+    "packages": true,
+    "submission": true,
+    "tmp": true
+  },
+  "search.exclude": {
+    "**/__pycache__": true,
+    ".runtime": true,
+    "artifacts": true,
+    "build": true,
+    "dist": true,
+    "output": true,
+    "packages": true,
+    "submission": true,
+    "tmp": true
+  },
+  "python.analysis.extraPaths": ["${workspaceFolder}/src"],
+  "python.testing.pytestArgs": ["src/tests", "src/test_project.py"]
+}
