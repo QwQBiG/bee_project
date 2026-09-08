@@ -218,7 +218,8 @@ def execute(args: argparse.Namespace, executable: str | Path) -> Path:
         from inference.visual_outputs import generate_visual_outputs
         generate_visual_outputs(
             payload, images, executable,
-            fps=float(visual_options.get("fps", 24.0)))
+            fps=float(visual_options.get("fps", 24.0)),
+            config=config)
         payload["processing_time_ms"] = max(
             payload["processing_time_ms"],
             int((time.perf_counter() - started) * 1000))

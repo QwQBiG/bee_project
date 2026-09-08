@@ -31,6 +31,7 @@ class OutsidePollenAnalyzer:
         self.min_samples = int(config.get("min_samples", 3))
         self.positive_sample_ratio = float(config.get("positive_sample_ratio", 0.60))
         self.min_inbound_events = int(config.get("min_inbound_events", 8))
+        self.min_analyzable_tracks = int(config.get("min_analyzable_tracks", 10))
         self.min_pollen_ratio = float(config.get("min_pollen_ratio", 0.15))
         self.entrance_region = config.get("entrance_region")
         self.hsv_lower = np.array(config.get("hsv_lower", [15, 70, 70]), dtype=np.uint8)
@@ -101,15 +102,26 @@ class OutsidePollenAnalyzer:
     def build_report(self) -> Dict:
         observed = [state for state in self.tracks.values() if len(state.samples) >= self.min_samples]
         candidates = sum(self._loaded(state)[0] for state in observed)
+        candidate_ratio = candidates / len(observed) if observed else None
         inbound_total = len(self.inbound_events)
         inbound_pollen = sum(event["pollen_candidate"] for event in self.inbound_events)
         pollen_ratio = inbound_pollen / inbound_total if inbound_total else None
         if not self.enabled:
             nutrition_status, nutrition_text = "unknown", "花粉分析已禁用。"
-        elif not self.entrance_region:
-            nutrition_status, nutrition_text = "unknown", "未配置蜂箱入口区域，无法将携粉候选转化为进巢采集量。"
-        elif inbound_total < self.min_inbound_events:
-            nutrition_status, nutrition_text = "unknown", "进巢样本不足，不能据此做营养判断。"
+        elif not self.entrance_region or inbound_total < self.min_inbound_events:
+            if len(observed) < self.min_analyzable_tracks:
+                nutrition_status = "unknown"
+                nutrition_text = "可分析轨迹不足，暂不能形成稳定的营养趋势预测。"
+            elif candidate_ratio is not None and candidate_ratio < self.min_pollen_ratio:
+                nutrition_status = "warning"
+                nutrition_text = (
+                    "低置信度趋势预警：携粉候选轨迹比例偏低；由于缺少足够的进巢事件，"
+                    "请结合入口区域标定、连续多日数据、天气和花源现场调查复核。")
+            else:
+                nutrition_status = "normal"
+                nutrition_text = (
+                    "低置信度趋势预测：本时间窗携粉候选轨迹比例未低于阈值；"
+                    "由于缺少足够的进巢事件，该结论不能替代蜂箱入口标定和现场检查。")
         elif pollen_ratio < self.min_pollen_ratio:
             nutrition_status, nutrition_text = "warning", "携粉进巢比例偏低；请结合连续多日数据、天气和花源现场调查复核。"
         else:
@@ -118,10 +130,23 @@ class OutsidePollenAnalyzer:
             "method": "HSV 花粉颜色候选（非专用花粉团模型确认）",
             "pollen_candidates": candidates,
             "analyzable_tracks": len(observed),
+            "pollen_candidate_ratio": (
+                round(candidate_ratio, 3) if candidate_ratio is not None else None),
             "inbound_events": inbound_total,
             "pollen_inbound_events": inbound_pollen,
             "pollen_inbound_ratio": round(pollen_ratio, 3) if pollen_ratio is not None else None,
             "entrance_region": self.entrance_region,
-            "nutrition_assessment": {"status": nutrition_status, "message": nutrition_text},
+            "nutrition_assessment": {
+                "status": nutrition_status,
+                "confidence": (
+                    "high" if inbound_total >= self.min_inbound_events
+                    else "low" if len(observed) >= self.min_analyzable_tracks
+                    else "insufficient"),
+                "basis": (
+                    "pollen_inbound_ratio"
+                    if inbound_total >= self.min_inbound_events
+                    else "pollen_candidate_ratio"),
+                "message": nutrition_text,
+            },
             "limitations": "颜色会受光照、花粉颜色、背景和分辨率影响。用于正式评估前，必须以“携粉/未携粉”标注数据训练并验证专用模型。",
         }

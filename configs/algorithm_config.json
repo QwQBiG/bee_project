@@ -22,6 +22,18 @@
   "labels": {"0": "bee"},
   "runtime": {"device": "auto"},
   "visual_output": {"enabled": true, "fps": 24.0},
+  "pollen_analysis": {
+    "enabled": true,
+    "hsv_lower": [15, 70, 70],
+    "hsv_upper": [45, 255, 255],
+    "min_color_ratio": 0.12,
+    "min_samples": 3,
+    "positive_sample_ratio": 0.60,
+    "min_inbound_events": 8,
+    "min_analyzable_tracks": 10,
+    "min_prediction_records": 20,
+    "min_pollen_ratio": 0.15
+  },
   "tracking": {
     "inside": {"backend": "iou"},
     "outside": {

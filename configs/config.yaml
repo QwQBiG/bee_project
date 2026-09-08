@@ -86,6 +86,20 @@ inside_metrics:
   pose_min_speed: 1.0
   cluster_share_threshold: 0.20
 
+# 巢外花粉候选与营养趋势预测。未配置入口区域时只给出低置信度趋势，
+# 正式使用前应按固定相机画面标定 entrance_region，并用标注数据验证阈值。
+pollen_analysis:
+  enabled: true
+  hsv_lower: [15, 70, 70]
+  hsv_upper: [45, 255, 255]
+  min_color_ratio: 0.12
+  min_samples: 3
+  positive_sample_ratio: 0.60
+  min_inbound_events: 8
+  min_analyzable_tracks: 10
+  min_prediction_records: 20
+  min_pollen_ratio: 0.15
+
 ## 可视化配置
 visualization:
   show_tracks: true

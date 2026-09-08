@@ -41,7 +41,26 @@ py -3.13 -m venv .venv
 ```
 
 直接使用系统 Python 时，将 `.venv\Scripts\python.exe` 换成 `py -3.13`。默认配置
-位于 `configs/config.yaml`，正式推理模型位于 `weights/`。
+位于 `configs/config.yaml`，正式推理模型位于 `weights/`。如需明确指定配置，可在
+命令末尾加 `--config "configs\config.yaml"`。
+
+## 运行四个比赛 EXE
+
+四个 EXE 接收的是连续编号的 JPG 图片目录，而不是视频文件：
+
+```bat
+cd /d C:\你的路径\bee_project\EXE-614689
+Inside-detection-614689.exe --input "C:\Test\Inside\detection\images"
+Inside-tracking-614689.exe  --input "C:\Test\Inside\tracking\images"
+Outside-detection-614689.exe --input "C:\Test\Outside\detection\images"
+Outside-tracking-614689.exe  --input "C:\Test\Outside\tracking\images"
+```
+
+检测程序生成逐帧目标框，跟踪程序在检测基础上生成个体 ID 和轨迹。比赛格式 JSON
+写入 `C:\TestResults\`；图表、标注视频、逐帧 CSV 和 HTML 分析预警报告写入
+`EXE-614689\output\` 的 `figures\`、`videos\`、`data\`、`reports\` 子目录。
+巢外报告给出携粉候选与营养趋势，巢内报告给出数量和活动趋势。报告中的自动判断是
+辅助筛查，并会标注置信度与局限，不能替代养蜂人员现场诊断。
 
 ## 生成队伍 614689 比赛 EXE
 
