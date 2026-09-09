@@ -1,0 +1,6 @@
+annotations/B-5-4/frame_001060_inside_01.txt
+annotations/B-5-4/frame_001060_inside_02.txt
+annotations/B-5-4/frame_001060_inside_03.txt
+annotations/B-5-4/frame_004541_inside_04.txt
+annotations/B-5-4/frame_004541_inside_05.txt
+annotations/B-5-4/frame_004541_inside_06.txt

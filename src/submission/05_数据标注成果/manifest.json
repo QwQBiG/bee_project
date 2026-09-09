@@ -1,0 +1,308 @@
+{
+  "version": "1.1",
+  "team_id": "614689",
+  "annotation_format": "YOLO_POSE_3x3",
+  "keypoints": [
+    "head",
+    "thorax",
+    "abdomen_tip"
+  ],
+  "kpt_shape": [
+    3,
+    3
+  ],
+  "skeleton": [
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "class_names": {
+    "0": "bee"
+  },
+  "fields": [
+    "class_id",
+    "bbox_cx",
+    "bbox_cy",
+    "bbox_width",
+    "bbox_height",
+    "head_x",
+    "head_y",
+    "head_v",
+    "thorax_x",
+    "thorax_y",
+    "thorax_v",
+    "abdomen_tip_x",
+    "abdomen_tip_y",
+    "abdomen_tip_v"
+  ],
+  "coordinate_system": "normalized_crop_xy",
+  "annotation_scope": "individuals_in_crop",
+  "annotation_source": "human_cvat",
+  "bbox_source": "keypoint_extent_padding_0.25",
+  "source_frame_index_base": 0,
+  "exported_frame_id_base": 1,
+  "jpeg_quality": 95,
+  "counts": {
+    "images": 12,
+    "instances": 167
+  },
+  "videos": [
+    {
+      "sequence": "B-5-4",
+      "split": "train",
+      "sha256": "318f112d84a34975af45c309c3883a74a2d511e1a6018fa680d825a6897bd044",
+      "video_file": "巢内监测/B-5-4.mp4",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30.0,
+      "annotated_crops": 6
+    },
+    {
+      "sequence": "A-5-4",
+      "split": "val",
+      "sha256": "ca1676bfe010df6a47d0ba19887ab6fb89937270c75084d20d09125784591e0e",
+      "video_file": "巢外监测/A-5-4.mp4",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30.0,
+      "annotated_crops": 6
+    }
+  ],
+  "samples": [
+    {
+      "sample": "outside_01",
+      "scene": "outside",
+      "sequence": "A-5-4",
+      "split": "val",
+      "frame_index_zero_based": 1135,
+      "frame_id_one_based": 1136,
+      "crop": {
+        "x": 0,
+        "y": 220,
+        "width": 640,
+        "height": 640
+      },
+      "accepted_rows": 18,
+      "label_file": "annotations/A-5-4/frame_001136_outside_01.txt",
+      "label_sha256": "67e7223db4bb58805c6b32dce828d131c4741d8fce0fb7a6c5f3cf584fd100ac",
+      "image_file": "A-5-4/frame_001136_outside_01.jpg",
+      "image_sha256": "1f670cb7f1a067a49ffc9a2b877052278f07665b12188aa4a69acda5813080ae"
+    },
+    {
+      "sample": "outside_02",
+      "scene": "outside",
+      "sequence": "A-5-4",
+      "split": "val",
+      "frame_index_zero_based": 1135,
+      "frame_id_one_based": 1136,
+      "crop": {
+        "x": 1280,
+        "y": 260,
+        "width": 640,
+        "height": 640
+      },
+      "accepted_rows": 1,
+      "label_file": "annotations/A-5-4/frame_001136_outside_02.txt",
+      "label_sha256": "40e43d6047305067595b84497c510d0ccddcc1a66d8134d439d942426040a775",
+      "image_file": "A-5-4/frame_001136_outside_02.jpg",
+      "image_sha256": "215be30b4073b18dfe8be30394414617c1c4373009cfd4afaeb9ea8c96fb0a83"
+    },
+    {
+      "sample": "outside_03",
+      "scene": "outside",
+      "sequence": "A-5-4",
+      "split": "val",
+      "frame_index_zero_based": 3557,
+      "frame_id_one_based": 3558,
+      "crop": {
+        "x": 0,
+        "y": 220,
+        "width": 640,
+        "height": 640
+      },
+      "accepted_rows": 20,
+      "label_file": "annotations/A-5-4/frame_003558_outside_03.txt",
+      "label_sha256": "f29fdf7c6d774c49e435f0fce7ca3d1b541e04338a6943f274367e67fc7c47c3",
+      "image_file": "A-5-4/frame_003558_outside_03.jpg",
+      "image_sha256": "7eb6e6f06ff7cacbf563cf51ace06d68c2d3b9b5528d58dc5779987b9d2cc14f"
+    },
+    {
+      "sample": "outside_04",
+      "scene": "outside",
+      "sequence": "A-5-4",
+      "split": "val",
+      "frame_index_zero_based": 5525,
+      "frame_id_one_based": 5526,
+      "crop": {
+        "x": 0,
+        "y": 220,
+        "width": 640,
+        "height": 640
+      },
+      "accepted_rows": 17,
+      "label_file": "annotations/A-5-4/frame_005526_outside_04.txt",
+      "label_sha256": "fc98bc54534990119abca0327dae2bb5436eac204e89ad1cdb72bfb9b1a9675e",
+      "image_file": "A-5-4/frame_005526_outside_04.jpg",
+      "image_sha256": "acd0bd200b5325633951edbb5ffd130e97984071c53899e98c635770059c901b"
+    },
+    {
+      "sample": "outside_05",
+      "scene": "outside",
+      "sequence": "A-5-4",
+      "split": "val",
+      "frame_index_zero_based": 8174,
+      "frame_id_one_based": 8175,
+      "crop": {
+        "x": 0,
+        "y": 260,
+        "width": 640,
+        "height": 640
+      },
+      "accepted_rows": 17,
+      "label_file": "annotations/A-5-4/frame_008175_outside_05.txt",
+      "label_sha256": "fd1ee8929e05b5b9ea8b90bd209ed04716f56b03a88dfa76b42d1aa15ea8713f",
+      "image_file": "A-5-4/frame_008175_outside_05.jpg",
+      "image_sha256": "065455578f84627121bf094a9cd9357912ed19e7ff0505babd844d1be1c18069"
+    },
+    {
+      "sample": "outside_06",
+      "scene": "outside",
+      "sequence": "A-5-4",
+      "split": "val",
+      "frame_index_zero_based": 8931,
+      "frame_id_one_based": 8932,
+      "crop": {
+        "x": 0,
+        "y": 300,
+        "width": 640,
+        "height": 640
+      },
+      "accepted_rows": 14,
+      "label_file": "annotations/A-5-4/frame_008932_outside_06.txt",
+      "label_sha256": "52a6e718888109adcae03950088947625bd915238248569d27d532ba0b1a3a81",
+      "image_file": "A-5-4/frame_008932_outside_06.jpg",
+      "image_sha256": "9b662399e2d7e798f959b719375b1a4404fc3b04675eea6cc6d99816945a9826"
+    },
+    {
+      "sample": "inside_01",
+      "scene": "inside",
+      "sequence": "B-5-4",
+      "split": "train",
+      "frame_index_zero_based": 1059,
+      "frame_id_one_based": 1060,
+      "crop": {
+        "x": 180,
+        "y": 590,
+        "width": 384,
+        "height": 384
+      },
+      "accepted_rows": 9,
+      "label_file": "annotations/B-5-4/frame_001060_inside_01.txt",
+      "label_sha256": "434b41802a2f7a30a38db585acfe6e173a80df650086c6d2c5fdc21e7f6f6463",
+      "image_file": "B-5-4/frame_001060_inside_01.jpg",
+      "image_sha256": "a9cab63fff5ec4d4a0433ace73fbcc1eba39aec02043ce5da302e7fccfa810ee"
+    },
+    {
+      "sample": "inside_02",
+      "scene": "inside",
+      "sequence": "B-5-4",
+      "split": "train",
+      "frame_index_zero_based": 1059,
+      "frame_id_one_based": 1060,
+      "crop": {
+        "x": 760,
+        "y": 590,
+        "width": 384,
+        "height": 384
+      },
+      "accepted_rows": 23,
+      "label_file": "annotations/B-5-4/frame_001060_inside_02.txt",
+      "label_sha256": "e0113c0d3ef420743b1d5729c58f93aacf0f26bb2ffcfe5443afd8b7a2e76e20",
+      "image_file": "B-5-4/frame_001060_inside_02.jpg",
+      "image_sha256": "20e0decfecb03fdf38b1026673961c83a53e8b328e21a41f1a40ddfd55536006"
+    },
+    {
+      "sample": "inside_03",
+      "scene": "inside",
+      "sequence": "B-5-4",
+      "split": "train",
+      "frame_index_zero_based": 1059,
+      "frame_id_one_based": 1060,
+      "crop": {
+        "x": 1320,
+        "y": 590,
+        "width": 384,
+        "height": 384
+      },
+      "accepted_rows": 11,
+      "label_file": "annotations/B-5-4/frame_001060_inside_03.txt",
+      "label_sha256": "48b6d5aa7bf795f1d8ecb97f485c9e16afa4f0ee554771192f8d83965e7f5278",
+      "image_file": "B-5-4/frame_001060_inside_03.jpg",
+      "image_sha256": "e0fbda2bc8e9b41356989d46dbc1181513cce0c1549967bc34b2fdf95264de8c"
+    },
+    {
+      "sample": "inside_04",
+      "scene": "inside",
+      "sequence": "B-5-4",
+      "split": "train",
+      "frame_index_zero_based": 4540,
+      "frame_id_one_based": 4541,
+      "crop": {
+        "x": 180,
+        "y": 590,
+        "width": 384,
+        "height": 384
+      },
+      "accepted_rows": 10,
+      "label_file": "annotations/B-5-4/frame_004541_inside_04.txt",
+      "label_sha256": "7b843d564286154e61bc8cfbee3ad69b6a21bbe88579e52a2d94833529ed8713",
+      "image_file": "B-5-4/frame_004541_inside_04.jpg",
+      "image_sha256": "53b4e615e23b60e6dd21f88ff1653f2c2e767dc8f88be39de4f35969e160e499"
+    },
+    {
+      "sample": "inside_05",
+      "scene": "inside",
+      "sequence": "B-5-4",
+      "split": "train",
+      "frame_index_zero_based": 4540,
+      "frame_id_one_based": 4541,
+      "crop": {
+        "x": 760,
+        "y": 590,
+        "width": 384,
+        "height": 384
+      },
+      "accepted_rows": 19,
+      "label_file": "annotations/B-5-4/frame_004541_inside_05.txt",
+      "label_sha256": "78373d3a3ac0d83ed68abeb1cf638bb40e4faa8180bdfe807dc1e736d8b7602d",
+      "image_file": "B-5-4/frame_004541_inside_05.jpg",
+      "image_sha256": "60ddff2eddf3511dd2f7d9f73c45158225afb132c6c2c27c85035acb86227caa"
+    },
+    {
+      "sample": "inside_06",
+      "scene": "inside",
+      "sequence": "B-5-4",
+      "split": "train",
+      "frame_index_zero_based": 4540,
+      "frame_id_one_based": 4541,
+      "crop": {
+        "x": 1320,
+        "y": 590,
+        "width": 384,
+        "height": 384
+      },
+      "accepted_rows": 8,
+      "label_file": "annotations/B-5-4/frame_004541_inside_06.txt",
+      "label_sha256": "ba6af737d84af9c5bc257485573bd6a7246d5795333fbcb3b47f527050d82d22",
+      "image_file": "B-5-4/frame_004541_inside_06.jpg",
+      "image_sha256": "ac5a2905c82f9393a32df25e0b08cf7ef97056085a5285bf4a8963d62cc2f1a6"
+    }
+  ],
+  "split_policy": "whole_video_experiment_groups",
+  "split_usage": "annotation_index"
+}

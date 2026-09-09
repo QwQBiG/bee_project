@@ -1,0 +1,6 @@
+annotations/A-5-4/frame_001136_outside_01.txt
+annotations/A-5-4/frame_001136_outside_02.txt
+annotations/A-5-4/frame_003558_outside_03.txt
+annotations/A-5-4/frame_005526_outside_04.txt
+annotations/A-5-4/frame_008175_outside_05.txt
+annotations/A-5-4/frame_008932_outside_06.txt
